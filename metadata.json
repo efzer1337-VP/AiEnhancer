@@ -1,0 +1,5 @@
+{
+  "name": "AI Image Prompt Enhancer",
+  "description": "An application that takes a simple text prompt in English or Russian and uses the Gemini API to generate a detailed, enhanced prompt suitable for AI image generation. Users can view the result as formatted text or a JSON object.",
+  "requestFramePermissions": []
+}
