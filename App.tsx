@@ -23,7 +23,8 @@ const App: React.FC = () => {
 
   // Image-specific state
   const [imagePrompt, setImagePrompt] = useState<string>('');
-  const [imageReference, setImageReference] = useState<string | null>(null);
+  const [characterReference, setCharacterReference] = useState<string | null>(null);
+  const [compositionReference, setCompositionReference] = useState<string | null>(null);
   const [imageModel, setImageModel] = useState<ImageModel>('midjourney');
   const [imageOutput, setImageOutput] = useState<EnhancedPrompt | null>(null);
 
@@ -51,15 +52,15 @@ const App: React.FC = () => {
   };
 
   const handleImageGenerate = useCallback(async () => {
-    if (!imagePrompt.trim() && !imageReference) {
-      setError('Please enter a prompt or provide a reference image.');
+    if (!imagePrompt.trim() && !characterReference && !compositionReference) {
+      setError('Please enter a prompt or provide at least one reference image.');
       return;
     }
     setIsLoading(true);
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedPrompt(imagePrompt, language, imageModel, imageReference, enhancementPower);
+      const result = await generateEnhancedPrompt(imagePrompt, language, imageModel, characterReference, compositionReference, enhancementPower);
       setImageOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -68,7 +69,8 @@ const App: React.FC = () => {
         language,
         model: imageModel,
         output: result,
-        referenceImage: imageReference,
+        characterReference,
+        compositionReference,
         enhancementPower,
       };
       setHistory(prev => [newHistoryItem, ...prev]);
@@ -79,7 +81,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [imagePrompt, language, imageModel, imageReference, enhancementPower]);
+  }, [imagePrompt, language, imageModel, characterReference, compositionReference, enhancementPower]);
 
   const handleVideoGenerate = useCallback(async () => {
     if (!videoPrompt.trim()) {
@@ -200,7 +202,7 @@ const App: React.FC = () => {
     setEnhancementPower(item.enhancementPower ?? 3);
     
     // Reset all inputs and outputs before setting the active one
-    setImagePrompt(''); setImageOutput(null); setImageReference(null);
+    setImagePrompt(''); setImageOutput(null); setCharacterReference(null); setCompositionReference(null);
     setVideoPrompt(''); setVideoOutput(null); setFirstFrame(null);
     setEditPrompt(''); setEditOutput(null); setEditImage(null);
 
@@ -208,7 +210,8 @@ const App: React.FC = () => {
       setImagePrompt(item.simplePrompt);
       setImageModel(item.model);
       setImageOutput(item.output);
-      setImageReference(item.referenceImage || null);
+      setCharacterReference(item.characterReference || null);
+      setCompositionReference(item.compositionReference || null);
     } else if (item.type === 'video') {
       setVideoPrompt(item.simplePrompt);
       setVideoModel(item.model);
@@ -227,7 +230,8 @@ const App: React.FC = () => {
     setActiveHistoryId(null);
     setImagePrompt('');
     setImageOutput(null);
-    setImageReference(null);
+    setCharacterReference(null);
+    setCompositionReference(null);
     setVideoPrompt('');
     setVideoOutput(null);
     setFirstFrame(null);
@@ -246,8 +250,10 @@ const App: React.FC = () => {
         return <PromptInput
           prompt={imagePrompt}
           setPrompt={setImagePrompt}
-          referenceImage={imageReference}
-          setReferenceImage={setImageReference}
+          characterReference={characterReference}
+          setCharacterReference={setCharacterReference}
+          compositionReference={compositionReference}
+          setCompositionReference={setCompositionReference}
           language={language}
           setLanguage={setLanguage}
           imageModel={imageModel}

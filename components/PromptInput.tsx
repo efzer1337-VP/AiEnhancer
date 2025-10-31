@@ -1,13 +1,16 @@
 
 import React, { useRef, useState } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
+import { ImageIcon } from './icons/ImageIcon';
 import type { ImageModel } from '../types';
 
 interface PromptInputProps {
   prompt: string;
   setPrompt: (prompt: string) => void;
-  referenceImage: string | null;
-  setReferenceImage: (image: string | null) => void;
+  characterReference: string | null;
+  setCharacterReference: (image: string | null) => void;
+  compositionReference: string | null;
+  setCompositionReference: (image: string | null) => void;
   language: 'en' | 'ru';
   setLanguage: (language: 'en' | 'ru') => void;
   imageModel: ImageModel;
@@ -33,20 +36,13 @@ const powerLabels: { [key: number]: string } = {
   5: 'Max Creative',
 };
 
-export const PromptInput: React.FC<PromptInputProps> = ({
-  prompt,
-  setPrompt,
-  referenceImage,
-  setReferenceImage,
-  language,
-  setLanguage,
-  imageModel,
-  setImageModel,
-  enhancementPower,
-  setEnhancementPower,
-  onGenerate,
-  isLoading,
-}) => {
+const ImageDropzone: React.FC<{
+  title: string;
+  subtitle: string;
+  image: string | null;
+  setImage: (image: string | null) => void;
+  isLoading: boolean;
+}> = ({ title, subtitle, image, setImage, isLoading }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
@@ -55,12 +51,12 @@ export const PromptInput: React.FC<PromptInputProps> = ({
       const file = files[0];
       const reader = new FileReader();
       reader.onload = (e) => {
-        setReferenceImage(e.target?.result as string);
+        setImage(e.target?.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
-  
+
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -80,33 +76,88 @@ export const PromptInput: React.FC<PromptInputProps> = ({
     }
   };
 
+  const handleRemoveImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setImage(null);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div
+      className={`relative w-full border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors flex flex-col justify-center items-center h-28 ${dragActive ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600 hover:border-blue-500'}`}
+      onClick={() => fileInputRef.current?.click()}
+      onDragEnter={handleDrag}
+      onDragOver={handleDrag}
+      onDragLeave={handleDrag}
+      onDrop={handleDrop}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => handleFileChange(e.target.files)}
+        disabled={isLoading}
+      />
+      {image ? (
+        <>
+          <img src={image} alt={`${title} preview`} className="max-h-full max-w-full object-contain rounded-md" />
+          <button
+            onClick={handleRemoveImage}
+            className="absolute top-1 right-1 bg-gray-900/70 hover:bg-red-600/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold transition-all transform hover:scale-110 focus:outline-none z-10"
+            aria-label={`Remove ${title}`}
+          >
+            &times;
+          </button>
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full text-gray-400">
+          <ImageIcon className="w-6 h-6 mb-1" />
+          <p className="font-semibold text-gray-300 text-sm">{title}</p>
+          <p className="text-xs text-gray-500">{subtitle}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const PromptInput: React.FC<PromptInputProps> = ({
+  prompt,
+  setPrompt,
+  characterReference,
+  setCharacterReference,
+  compositionReference,
+  setCompositionReference,
+  language,
+  setLanguage,
+  imageModel,
+  setImageModel,
+  enhancementPower,
+  setEnhancementPower,
+  onGenerate,
+  isLoading,
+}) => {
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 shadow-2xl flex flex-col gap-4 h-full">
       <h2 className="text-2xl font-semibold text-gray-100">Your Idea</h2>
       
-      <div 
-        className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${dragActive ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600 hover:border-blue-500'}`}
-        onClick={() => fileInputRef.current?.click()}
-        onDragEnter={handleDrag}
-        onDragOver={handleDrag}
-        onDragLeave={handleDrag}
-        onDrop={handleDrop}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => handleFileChange(e.target.files)}
-          disabled={isLoading}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <ImageDropzone 
+            title="Character Reference" 
+            subtitle="Influences the subject"
+            image={characterReference} 
+            setImage={setCharacterReference} 
+            isLoading={isLoading} 
         />
-        {referenceImage ? (
-          <img src={referenceImage} alt="Reference image preview" className="mx-auto max-h-24 rounded-md" />
-        ) : (
-          <p className="text-gray-400">
-            {dragActive ? 'Drop image here' : 'Optionally, click or drag & drop a reference image'}
-          </p>
-        )}
+        <ImageDropzone 
+            title="Composition Reference" 
+            subtitle="Influences scene & style"
+            image={compositionReference} 
+            setImage={setCompositionReference} 
+            isLoading={isLoading} 
+        />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -158,7 +209,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
         </div>
       </div>
        <p className="text-sm text-center text-gray-500 -mb-2">
-          {referenceImage ? 'Describe what to do with the image, or leave blank to just enhance it.' : 'Describe your idea in text and/or upload an image to start.'}
+          {characterReference || compositionReference ? 'Describe modifications, or leave blank to blend/enhance the images.' : 'Describe your idea in text and/or upload images to start.'}
       </p>
       <textarea
         value={prompt}
@@ -169,7 +220,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
       />
       <button
         onClick={onGenerate}
-        disabled={isLoading || (!prompt.trim() && !referenceImage)}
+        disabled={isLoading || (!prompt.trim() && !characterReference && !compositionReference)}
         className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 disabled:transform-none"
       >
         {isLoading ? (
@@ -182,4 +233,11 @@ export const PromptInput: React.FC<PromptInputProps> = ({
           </>
         ) : (
           <>
-            <SparklesIcon className="w-6 h-6
+            <SparklesIcon className="w-6 h-6" />
+            Enhance Prompt
+          </>
+        )}
+      </button>
+    </div>
+  );
+};

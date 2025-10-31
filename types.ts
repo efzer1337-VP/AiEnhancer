@@ -82,45 +82,49 @@ export interface EnhancedPrompt {
 }
 
 
-// --- ENHANCED VIDEO PROMPT TYPES ---
+// --- ENHANCED VIDEO PROMPT TYPES (VEO META-FRAMEWORK) ---
 
-interface VideoStyle {
-  type: string;
-  aesthetic: string;
-  look_and_feel: string[];
-  artistic_references: string[];
-}
-
-interface SceneCharacter {
-  name: string;
-  description: string;
-}
-
-interface SceneElements {
-  setting: string;
-  characters: SceneCharacter[];
-}
-
-interface SequenceStep {
-  time: string;
-  action: string;
-  camera: string;
-}
-
-interface ColorPalette {
-  overall: string;
-  dominant_colors: string[];
-  accent_colors: string[];
-  lighting: string;
+interface MultiPromptConcept {
+  concept: string; // e.g., "cat", "astronaut"
+  weight: number; // e.g., 2, 1
 }
 
 export interface EnhancedVideoPrompt {
-  prompt: string;
-  style: VideoStyle;
-  scene_elements: SceneElements;
-  sequence: SequenceStep[];
-  color_palette: ColorPalette;
+  prompt_type: string; // e.g., "[SCENE]"
+  style: {
+    primary_style: string; // e.g., "Cinematic"
+    secondary_style: string; // e.g., "8K RAW photo"
+    artistic_influence: string; // e.g., "in the style of Wes Anderson"
+    color_palette: string; // e.g., "Vibrant neon colors", "Monochromatic"
+  };
+  subject: {
+    full_description: string; // The complete subject string with weighting, e.g., "a majestic ((lion)) with a golden mane"
+    multi_prompts: MultiPromptConcept[]; // For blending concepts, e.g., [{ concept: 'cat', weight: 2 }, { concept: 'astronaut', weight: 1 }]
+  };
+  action: string;
+  environment: string;
+  composition: {
+    shot_type: string; // e.g., "Wide Angle Shot", "Close-up"
+    camera_angle: string; // e.g., "Low angle", "Aerial view"
+    camera_movement: string; // e.g., "Dolly zoom", "Time-lapse"
+  };
+  lighting: {
+    style: string; // e.g., "Cinematic Lighting", "Golden Hour"
+    effect: string; // e.g., "Volumetric rays", "Lens flare"
+  };
+  parameters: {
+    aspect_ratio: string; // e.g., "16:9"
+    negative_prompt: string; // e.g., "blurry, grainy, watermark"
+    seed: number | null;
+    stylize: number | null; // --s
+    chaos: number | null; // --c
+    quality: string | null; // --q, e.g., "0.5", "1"
+    weird: number | null; // --weird
+    tile: boolean; // --tile
+  };
+  final_prompt: string;
 }
+
 
 // --- ENHANCED EDIT PROMPT TYPES ---
 
@@ -165,7 +169,8 @@ export interface HistoryItemImage extends HistoryItemBase {
   type: 'image';
   model: ImageModel;
   output: EnhancedPrompt;
-  referenceImage?: string | null;
+  characterReference?: string | null;
+  compositionReference?: string | null;
 }
 
 export interface HistoryItemVideo extends HistoryItemBase {

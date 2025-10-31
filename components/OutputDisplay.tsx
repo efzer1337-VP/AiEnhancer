@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode } from '../types';
 import { CodeIcon } from './icons/CodeIcon';
@@ -43,18 +44,21 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode; d
 };
 
 // Helper for rendering key-value pairs
-const Detail: React.FC<{ label: string; value: string | string[] }> = ({ label, value }) => (
-  <div className="mb-3">
-    <strong className="text-gray-400 block font-medium">{label}:</strong>
-    {Array.isArray(value) ? (
-      <ul className="list-disc list-inside ml-2 text-cyan-300 space-y-1 mt-1">
-        {value.map((item, index) => <li key={index} className="text-gray-200">{item}</li>)}
-      </ul>
-    ) : (
-      <span className="text-gray-200">{value}</span>
-    )}
-  </div>
-);
+const Detail: React.FC<{ label: string; value: string | string[] | number | null | undefined }> = ({ label, value }) => {
+    if (value === null || value === undefined || value === '') return null;
+    return (
+      <div className="mb-3">
+        <strong className="text-gray-400 block font-medium">{label}:</strong>
+        {Array.isArray(value) ? (
+          <ul className="list-disc list-inside ml-2 text-cyan-300 space-y-1 mt-1">
+            {value.map((item, index) => <li key={index} className="text-gray-200">{item}</li>)}
+          </ul>
+        ) : (
+          <span className="text-gray-200">{value}</span>
+        )}
+      </div>
+    );
+}
 
 type ImagePromptSection = 'core' | 'style' | 'technical' | 'scene_setup' | 'modifications' | 'quality';
 
@@ -288,54 +292,64 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
   const renderVideoView = (data: EnhancedVideoPrompt) => (
     <div>
       <RefineInput onRefine={onRefine} isRefining={isRefining} />
-      <CollapsibleSection title="Master Prompt" defaultOpen={true}>
+      <CollapsibleSection title="Final VEO Prompt" defaultOpen={true}>
         <div className="relative">
           <button
-            onClick={() => handleCopy(data.prompt, 'video-master')}
+            onClick={() => handleCopy(data.final_prompt, 'video-final')}
             className="absolute top-2 right-2 p-1.5 bg-gray-700/80 hover:bg-gray-600 rounded-md text-gray-300 hover:text-white transition-colors z-10"
             aria-label="Copy prompt"
           >
-            {copiedKey === 'video-master' ? (
+            {copiedKey === 'video-final' ? (
               <CheckIcon className="w-4 h-4 text-green-400" />
             ) : (
               <ClipboardIcon className="w-4 h-4" />
             )}
           </button>
-          <p className="text-gray-300 bg-gray-900 p-3 rounded-md font-mono text-sm whitespace-pre-wrap">{data.prompt}</p>
+          <p className="text-gray-300 bg-gray-900 p-3 rounded-md font-mono text-sm whitespace-pre-wrap">{data.final_prompt}</p>
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Style">
-        <Detail label="Type" value={data.style.type} />
-        <Detail label="Aesthetic" value={data.style.aesthetic} />
-        <Detail label="Look & Feel" value={data.style.look_and_feel} />
-        <Detail label="Artistic References" value={data.style.artistic_references} />
+      <CollapsibleSection title="Core Narrative" defaultOpen={true}>
+        <Detail label="Prompt Type" value={data.prompt_type} />
+        {data.subject.multi_prompts && data.subject.multi_prompts.length > 0 ? (
+            <div className="mb-3">
+                <strong className="text-gray-400 block font-medium">Blended Subject (Multi-Prompt):</strong>
+                <ul className="list-disc list-inside ml-2 text-cyan-300 space-y-1 mt-1">
+                    {data.subject.multi_prompts.map((mp, index) => (
+                        <li key={index} className="text-gray-200">{mp.concept} (Weight: {mp.weight})</li>
+                    ))}
+                </ul>
+            </div>
+        ) : (
+            <Detail label="Subject" value={data.subject.full_description} />
+        )}
+        <Detail label="Action" value={data.action} />
+        <Detail label="Environment" value={data.environment} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Scene Elements">
-        <Detail label="Setting" value={data.scene_elements.setting} />
-        {data.scene_elements.characters.map((char, i) => (
-          <div key={i} className="mt-2 p-3 border-l-2 border-cyan-500 bg-gray-800/40 rounded-r-md">
-            <Detail label={`Character: ${char.name}`} value={char.description} />
-          </div>
-        ))}
+      <CollapsibleSection title="Style & Cinematography">
+        <Detail label="Primary Style" value={data.style.primary_style} />
+        <Detail label="Secondary Style" value={data.style.secondary_style} />
+        <Detail label="Artistic Influence" value={data.style.artistic_influence} />
+        <Detail label="Color Palette" value={data.style.color_palette} />
+        <div className="my-4 border-t border-gray-700/50"></div>
+        <Detail label="Shot Type" value={data.composition.shot_type} />
+        <Detail label="Camera Angle" value={data.composition.camera_angle} />
+        <Detail label="Camera Movement" value={data.composition.camera_movement} />
+        <div className="my-4 border-t border-gray-700/50"></div>
+        <Detail label="Lighting Style" value={data.lighting.style} />
+        <Detail label="Lighting Effect" value={data.lighting.effect} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Sequence">
-        {data.sequence.map((step, i) => (
-          <div key={i} className="mb-3 p-3 border-l-2 border-cyan-500 bg-gray-800/40 rounded-r-md">
-            <Detail label="Time" value={step.time} />
-            <Detail label="Action" value={step.action} />
-            <Detail label="Camera" value={step.camera} />
-          </div>
-        ))}
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Color & Lighting">
-        <Detail label="Overall" value={data.color_palette.overall} />
-        <Detail label="Dominant Colors" value={data.color_palette.dominant_colors} />
-        <Detail label="Accent Colors" value={data.color_palette.accent_colors} />
-        <Detail label="Lighting" value={data.color_palette.lighting} />
+      <CollapsibleSection title="Technical Parameters">
+        <Detail label="Aspect Ratio" value={`--ar ${data.parameters.aspect_ratio}`} />
+        {data.parameters.negative_prompt && <Detail label="Negative Prompt" value={`--no ${data.parameters.negative_prompt}`} />}
+        {data.parameters.seed != null && <Detail label="Seed" value={`--seed ${data.parameters.seed}`} />}
+        {data.parameters.stylize != null && <Detail label="Stylize" value={`--s ${data.parameters.stylize}`} />}
+        {data.parameters.chaos != null && <Detail label="Chaos" value={`--c ${data.parameters.chaos}`} />}
+        {data.parameters.quality != null && <Detail label="Quality" value={`--q ${data.parameters.quality}`} />}
+        {data.parameters.weird != null && <Detail label="Weird" value={`--weird ${data.parameters.weird}`} />}
+        {data.parameters.tile && <Detail label="Tile" value="--tile" />}
       </CollapsibleSection>
     </div>
   );
@@ -414,7 +428,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
     
     // Type guards to differentiate between prompt types
     const isImagePrompt = (o: any): o is EnhancedPrompt => o && o.prompt && 'core' in o.prompt;
-    const isVideoPrompt = (o: any): o is EnhancedVideoPrompt => o && o.prompt && 'scene_elements' in o;
+    const isVideoPrompt = (o: any): o is EnhancedVideoPrompt => o && 'final_prompt' in o && o.prompt_type && o.subject && 'full_description' in o.subject;
     const isEditPrompt = (o: any): o is EnhancedEditPrompt => o && 'master_prompt' in o;
 
 

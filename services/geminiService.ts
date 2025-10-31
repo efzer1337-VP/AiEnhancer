@@ -141,7 +141,8 @@ export const generateEnhancedPrompt = async (
   simplePrompt: string,
   language: 'en' | 'ru',
   model: ImageModel,
-  imageBase64?: string | null,
+  characterReference?: string | null,
+  compositionReference?: string | null,
   enhancementPower: number = 3
 ): Promise<EnhancedPrompt> => {
   try {
@@ -154,37 +155,73 @@ export const generateEnhancedPrompt = async (
     const targetModelName = modelNameMapping[model];
     const powerDescription = getPowerDescription(enhancementPower);
 
-    const systemInstruction = `You are a world-class AI prompt engineer, a master of visual storytelling. Your task is to transform a user's input (which can be a text idea in ${language === 'ru' ? 'Russian' : 'English'}, a reference image, or both) into an exceptionally detailed, structured JSON object. This prompt is specifically tailored for the **${targetModelName}** image generator. ${powerDescription} If an image is provided, analyze its subject, style, composition, and lighting as a base. If a text prompt is also given, use it to modify or enhance the elements from the image. Your output MUST be a JSON object in English, adhering strictly to the provided, deeply nested schema. Every field must be filled with rich, specific, and creative details derived from your analysis and the user's instructions. You must think like a combination of a professional photographer, a cinematographer, and a renowned artist.`;
+    let systemInstructionText = `You are a world-class AI prompt engineer, a master of visual storytelling. Your task is to transform a user's input (which can be a text idea in ${language === 'ru' ? 'Russian' : 'English'}, reference images, or a combination) into an exceptionally detailed, structured JSON object. This prompt is specifically tailored for the **${targetModelName}** image generator. ${powerDescription} Your output MUST be a JSON object in English, adhering strictly to the provided, deeply nested schema. Every field must be filled with rich, specific, and creative details. You must think like a combination of a professional photographer, a cinematographer, and a renowned artist.`;
 
-    let contents: any;
+    if (characterReference && !compositionReference) {
+        systemInstructionText += `
 
-    if (imageBase64) {
-      const match = imageBase64.match(/^data:(image\/[a-z]+);base64,(.*)$/);
-      if (!match) {
-        throw new Error("Invalid base64 image format.");
-      }
-      const mimeType = match[1];
-      const data = match[2];
-      const imagePart = { inlineData: { mimeType, data } };
-      
-      let textPrompt;
-      if (simplePrompt.trim()) {
-        textPrompt = `The user's idea is (in ${language === 'ru' ? 'Russian' : 'English'}): "${simplePrompt}". Use the provided image as a strong visual reference. The generated prompt should describe a new, enhanced image that is heavily inspired by or a variation of the provided image, guided by the text prompt.`;
-      } else {
-        textPrompt = `Analyze the provided image and generate a detailed, enhanced prompt that captures and elevates its essence. The user has not provided any text, so your analysis of the image is the primary input.`;
-      }
-      
-      const textPart = { text: textPrompt };
-      contents = { parts: [imagePart, textPart] };
+**Image Context: A character reference image is provided.**
+
+**Your thought process must be:**
+1.  **Analyze the Character:** Perform a detailed analysis of the character in the image. Identify their key features, clothing, style, species, and any notable accessories.
+2.  **Define the Goal:** Your primary goal is to create a new prompt that features a subject who looks *exactly* like the one in the reference image.
+3.  **Populate Subject:** Use your analysis to populate the 'subject' field with an extremely detailed description of this character.
+4.  **Incorporate Text Prompt:** If a text prompt is also provided, use it to define the *action* and *environment* for this character. If no text prompt is given, invent a creative and fitting scene for them.
+5.  **Complete the Scene:** Creatively fill all other fields (style, camera, lighting) to produce a high-quality image of this character in the new scene.`;
+    } else if (!characterReference && compositionReference) {
+        systemInstructionText += `
+
+**Image Context: A composition reference image is provided.**
+
+**Your thought process must be:**
+1.  **Analyze the Composition:** Perform a deep analysis of this image. Deconstruct its artistic style, color palette, mood, lighting setup (source, effect), and camera details (shot type, angle, lens).
+2.  **Define the Goal:** Your primary goal is to create a prompt for a *new* image that captures the *exact same aesthetic, mood, and composition* as the reference.
+3.  **Populate Scene:** Use your analysis to populate the 'style', 'technical', and 'scene_setup' fields with details that meticulously replicate the reference image's atmosphere.
+4.  **Incorporate Text Prompt:** If a text prompt is also provided, it describes the *new subject* to place within this replicated scene. If no text prompt is provided, invent a new, interesting subject that fits the scene's style.`;
+    } else if (characterReference && compositionReference) {
+        systemInstructionText += `
+
+**Image Context: Both CHARACTER and COMPOSITION reference images are provided.**
+
+**Your thought process must be a three-part synthesis:**
+1.  **Part 1: Character Analysis.** Deeply analyze the CHARACTER image. Identify the subject's exact appearance, clothing, species, features, and style. This is your model for the main subject.
+2.  **Part 2: Composition Analysis.** Deeply analyze the COMPOSITION image. Deconstruct its artistic style, color palette, mood, lighting, and camera composition. This is your template for the scene.
+3.  **Part 3: Synthesis.** Your goal is to create a prompt that seamlessly places the *character* from the Character Analysis into the *scene* from the Composition Analysis. Populate the 'subject' field based on Part 1, and populate 'style', 'technical', and 'scene_setup' based on Part 2.
+4.  **Incorporate Text Prompt:** If a text prompt is also provided, use it as an instruction to modify the synthesized scene (e.g., change the character's action, add props). If no text prompt is given, create a natural and logical interaction between the character and the environment.`;
+    }
+    
+    let finalContents: any;
+    const partsForApi: any[] = [];
+    
+    const textPromptPart = simplePrompt.trim() 
+      ? `User idea (in ${language === 'ru' ? 'Russian' : 'English'}): "${simplePrompt}"` 
+      : "The user did not provide a text prompt; rely on the image(s) for creative direction.";
+
+    if (characterReference || compositionReference) {
+        partsForApi.push({ text: textPromptPart });
+
+        if (characterReference) {
+            partsForApi.push({ text: "--- CHARACTER reference image ---" });
+            const match = characterReference.match(/^data:(image\/[a-z]+);base64,(.*)$/);
+            if (!match) throw new Error("Invalid character image format.");
+            partsForApi.push({ inlineData: { mimeType: match[1], data: match[2] } });
+        }
+        if (compositionReference) {
+            partsForApi.push({ text: "--- COMPOSITION reference image ---" });
+            const match = compositionReference.match(/^data:(image\/[a-z]+);base64,(.*)$/);
+            if (!match) throw new Error("Invalid composition image format.");
+            partsForApi.push({ inlineData: { mimeType: match[1], data: match[2] } });
+        }
+        finalContents = { parts: partsForApi };
     } else {
-      contents = `Here is the user's idea: "${simplePrompt}"`;
+        finalContents = textPromptPart;
     }
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: contents,
+      contents: finalContents,
       config: {
-        systemInstruction,
+        systemInstruction: systemInstructionText,
         responseMimeType: "application/json",
         responseSchema: imageResponseSchema,
         temperature: 0.9,
@@ -242,64 +279,72 @@ export const refineEnhancedPrompt = async (
 const videoResponseSchema = {
   type: Type.OBJECT,
   properties: {
-    prompt: { type: Type.STRING, description: "A masterfully crafted, coherent paragraph combining all key details into a single, powerful prompt for advanced video generation models. This should be a single block of text that can be used directly." },
+    prompt_type: { type: Type.STRING, description: "The prompt type, enclosed in square brackets. E.g., '[SCENE]' or '[MOTION]'." },
     style: {
       type: Type.OBJECT,
-      description: "Detailed breakdown of the visual and artistic style.",
       properties: {
-        type: { type: Type.STRING, description: "The type of animation or video style, e.g., '2D animation', 'cinematic live-action'." },
-        aesthetic: { type: Type.STRING, description: "The overall aesthetic, e.g., 'folk-art illustration', 'cyberpunk noir'." },
-        look_and_feel: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Descriptive keywords for the mood, e.g., ['whimsical', 'dreamlike', 'textured']." },
-        artistic_references: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Specific artists or styles to reference, e.g., ['petroglyph art', 'Studio Ghibli']." },
+        primary_style: { type: Type.STRING, description: "Primary style, e.g., 'Cinematic', 'Hyperrealistic'." },
+        secondary_style: { type: Type.STRING, description: "Secondary style or medium, e.g., '8K RAW photo', 'Shot on 8mm film'." },
+        artistic_influence: { type: Type.STRING, description: "Specific artists or genres, e.g., 'in the style of Wes Anderson'." },
+        color_palette: { type: Type.STRING, description: "Color description, e.g., 'Vibrant neon colors', 'Monochromatic'." },
       },
-      required: ['type', 'aesthetic', 'look_and_feel', 'artistic_references']
+      required: ['primary_style', 'secondary_style', 'artistic_influence', 'color_palette']
     },
-    scene_elements: {
+    subject: {
       type: Type.OBJECT,
-      description: "Detailed breakdown of all elements within the scene.",
       properties: {
-        setting: { type: Type.STRING, description: "A vivid description of the environment, background, and location." },
-        characters: {
+        full_description: { type: Type.STRING, description: "The complete, detailed subject description. Use double parentheses `((word))` for heavy emphasis and single `(word)` for light emphasis." },
+        multi_prompts: {
           type: Type.ARRAY,
+          description: "An array of concepts to be blended using multi-prompting. Only use this if the user's idea implies blending distinct concepts (e.g., 'robot knight'). If not applicable, return an empty array.",
           items: {
             type: Type.OBJECT,
             properties: {
-              name: { type: Type.STRING, description: "The name or identifier for the character." },
-              description: { type: Type.STRING, description: "A detailed description of the character's appearance, clothing, and key features." }
+              concept: { type: Type.STRING },
+              weight: { type: Type.NUMBER },
             },
-            required: ['name', 'description']
-          },
-          description: "An array of all characters or key animated objects in the scene."
-        }
-      },
-      required: ['setting', 'characters']
-    },
-    sequence: {
-      type: Type.ARRAY,
-      description: "A shot-by-shot breakdown of the video's action and camera work.",
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          time: { type: Type.STRING, description: "The time frame for this part of the sequence, e.g., '0-4 seconds'." },
-          action: { type: Type.STRING, description: "A description of the action and events that occur in this time frame." },
-          camera: { type: Type.STRING, description: "A description of the camera shot, angle, and movement. Use cinematography terms." }
+            required: ['concept', 'weight']
+          }
         },
-        required: ['time', 'action', 'camera']
-      }
-    },
-    color_palette: {
-      type: Type.OBJECT,
-      description: "A detailed description of the color scheme and lighting.",
-      properties: {
-        overall: { type: Type.STRING, description: "An overall description of the color mood, e.g., 'Muted, harmonious, and earthy'." },
-        dominant_colors: { type: Type.ARRAY, items: { type: Type.STRING }, description: "A list of the primary colors used." },
-        accent_colors: { type: Type.ARRAY, items: { type: Type.STRING }, description: "A list of secondary or accent colors." },
-        lighting: { type: Type.STRING, description: "A detailed description of the lighting style, quality, and direction." }
       },
-      required: ['overall', 'dominant_colors', 'accent_colors', 'lighting']
-    }
+      required: ['full_description', 'multi_prompts']
+    },
+    action: { type: Type.STRING, description: "The vivid action the subject is performing." },
+    environment: { type: Type.STRING, description: "A rich description of the scene's environment or background." },
+    composition: {
+      type: Type.OBJECT,
+      properties: {
+        shot_type: { type: Type.STRING, description: "Shot type, e.g., 'Wide Angle Shot', 'Close-up'." },
+        camera_angle: { type: Type.STRING, description: "Camera angle, e.g., 'Low angle', 'Aerial view'." },
+        camera_movement: { type: Type.STRING, description: "Camera movement, e.g., 'Dolly zoom', 'Time-lapse'." },
+      },
+      required: ['shot_type', 'camera_angle', 'camera_movement']
+    },
+    lighting: {
+      type: Type.OBJECT,
+      properties: {
+        style: { type: Type.STRING, description: "Lighting style, e.g., 'Cinematic Lighting', 'Golden Hour'." },
+        effect: { type: Type.STRING, description: "Specific lighting effects, e.g., 'Volumetric rays', 'Lens flare'." },
+      },
+      required: ['style', 'effect']
+    },
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        aspect_ratio: { type: Type.STRING, description: "Aspect ratio, e.g., '16:9' or '9:16'." },
+        negative_prompt: { type: Type.STRING, description: "Comma-separated keywords to exclude, e.g., 'blurry, grainy, watermark'." },
+        seed: { type: Type.NUMBER, description: "A seed number for repeatable results, or null.", nullable: true },
+        stylize: { type: Type.NUMBER, description: "Stylization value (0-1000), or null.", nullable: true },
+        chaos: { type: Type.NUMBER, description: "Chaos value (0-100), or null.", nullable: true },
+        quality: { type: Type.STRING, description: "Quality setting (e.g., '0.5', '1'), or null.", nullable: true },
+        weird: { type: Type.NUMBER, description: "Weirdness value (0-3000), or null.", nullable: true },
+        tile: { type: Type.BOOLEAN, description: "Whether the output should be a seamless tile." },
+      },
+      required: ['aspect_ratio', 'negative_prompt', 'seed', 'stylize', 'chaos', 'quality', 'weird', 'tile']
+    },
+    final_prompt: { type: Type.STRING, description: "The final, assembled prompt string ready to be used in VEO, constructed from all the other fields." }
   },
-  required: ['prompt', 'style', 'scene_elements', 'sequence', 'color_palette']
+  required: ['prompt_type', 'style', 'subject', 'action', 'environment', 'composition', 'lighting', 'parameters', 'final_prompt']
 };
 
 
@@ -319,7 +364,35 @@ export const generateEnhancedVideoPrompt = async (
     const targetModelName = modelNameMapping[model];
     const powerDescription = getPowerDescription(enhancementPower);
 
-    const systemInstruction = `You are a world-class AI prompt engineer, a master of visual storytelling and cinematography. Your task is to transform a user's simple idea and a starting frame into a SUPER EXTRA DETAILED and structured JSON object for the **${targetModelName}** AI video generator. ${powerDescription} The video should be a short, dynamic clip that starts with or is inspired by the provided image. The output must be a JSON object in English, adhering strictly to the provided, deeply nested schema. You must provide a detailed breakdown of the scene, including style, characters, a time-based sequence of actions, and the color palette. The main 'prompt' field should be a beautifully written paragraph that summarizes the entire scene for direct use in the **${targetModelName}** AI video model. Tailor the nuance and structure of the prompt to what would be most effective for **${targetModelName}**.`;
+    const systemInstruction = `You are a master VEO prompt engineer and an expert in the official Google VEO Prompting Guide. Your goal is to convert a user's idea and a starting frame image into an expertly crafted, structured JSON prompt for the VEO video generation model.
+
+**Your Process & Rules:**
+
+1.  **Analyze Input**: Deeply analyze the user's idea (in ${language === 'ru' ? 'Russian' : 'English'}) and the provided first-frame image. The generated video should be a natural continuation or an enhanced version of the provided image.
+2.  **Populate JSON**: Fill out every field of the JSON object with rich, creative, and specific details based on your analysis.
+3.  **Subject & Multi-Prompting**:
+    *   For the \`subject.full_description\`, be extremely detailed. Use double parentheses \`((word))\` for heavy emphasis and single \`(word)\` for light emphasis on key elements.
+    *   If the user's idea blends two distinct concepts (e.g., "a cat astronaut"), use the \`subject.multi_prompts\` array. For "a cat astronaut", you would create \`[{ "concept": "cat", "weight": 1 }, { "concept": "astronaut", "weight": 1 }]\`. If one is more important, adjust the weights. If it's just a single concept, leave the array empty.
+4.  **Style & Cinematography**: Be specific. Use terms like "Cinematic," "Hyperrealistic," "Shot on 8mm film," "Low-angle shot," "Dolly zoom," "Golden hour," "Vibrant colors."
+5.  **Parameters**: Provide sensible default values. \`aspect_ratio\` should be '16:9' or '9:16'. Leave numeric fields as \`null\` if not directly implied. Set \`tile\` to \`false\` unless requested.
+6.  **Assemble \`final_prompt\` (CRITICAL)**: This is the most important step. You must construct the final prompt string by concatenating the other fields in a precise order and syntax.
+
+**Final Prompt Assembly Rules:**
+
+*   **Structure:** \`[Prompt Type] (Styles) [Subject/Multi-Prompt] [Action] in a [Environment], (Composition), (Lighting) --parameters\`
+*   **Styles/Composition/Lighting:** Every single descriptor from these sections (e.g., "Cinematic", "8K RAW photo", "Low angle") MUST be wrapped in its own individual parentheses \`()\`.
+*   **Subject:** If \`multi_prompts\` has items, format it as \`[concept1]::[weight1] [concept2]::[weight2]\`. If not, use the \`subject.full_description\`.
+*   **Parameters:**
+    *   Format as \`--ar [aspect_ratio]\`.
+    *   Format negative prompt as \`--no [negative_prompt]\`.
+    *   Format others as \`--[param] [value]\`, e.g., \`--s 750\`, \`--c 20\`.
+    *   Include \`--tile\` only if \`tile\` is true.
+
+**High-Quality Example:**
+*User Idea:* "A crystal wolf running through a neon forest."
+*Resulting \`final_prompt\`*: \`[MOTION] (Cinematic) (Hyperrealistic) (Vibrant neon colors) a ((crystal wolf)) with glowing blue eyes running swiftly through a dense, neon-lit forest, (Medium shot), (Tracking shot), (Low angle), (Dramatic Lighting), (Volumetric rays) --ar 16:9 --no blurry, cartoon --s 800 --c 10\`
+
+Your output MUST be a single, valid JSON object in English adhering strictly to the provided schema. ${powerDescription} Tailor the prompt for the **${targetModelName}** video generator.`;
     
     const match = imageBase64.match(/^data:(image\/[a-z]+);base64,(.*)$/);
     if (!match) {
@@ -370,7 +443,16 @@ export const refineEnhancedVideoPrompt = async (
     };
     const targetModelName = modelNameMapping[model];
 
-    const systemInstruction = `You are an AI assistant that refines detailed JSON prompts for the **${targetModelName}** video generator. You will be given a JSON object representing the current prompt and a user's request for modification. Your task is to apply the modification and return a new, valid JSON object that strictly adheres to the original schema. Do not add any explanatory text, just output the modified JSON. Ensure the refinement logically integrates with the existing prompt details.`;
+    const systemInstruction = `You are an AI assistant that refines detailed JSON prompts for the **${targetModelName}** video generator, based on the official Google VEO Prompting Guide. You will be given a JSON object representing the current prompt and a user's request for modification.
+
+**Your task is to:**
+1.  Apply the user's modification to the relevant fields in the JSON object. You might need to add or modify multi-prompts, change styles, or adjust parameters.
+2.  **CRITICAL:** Re-assemble the 'final_prompt' string based on ALL the updated fields. The final string MUST strictly follow the VEO prompt syntax rules:
+    *   **Structure:** \`[Prompt Type] (Styles) [Subject/Multi-Prompt] [Action] in a [Environment], (Composition), (Lighting) --parameters\`
+    *   **Parentheses:** Wrap every individual style, composition, and lighting descriptor in its own parentheses \`()\`.
+    *   **Multi-Prompt:** If applicable, use the \`[concept]::[weight]\` syntax.
+    *   **Parameters:** Correctly format all parameters (\`--ar\`, \`--no\`, \`--s\`, etc.).
+3.  Return the new, valid JSON object. Do not add any explanatory text, just the JSON.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
