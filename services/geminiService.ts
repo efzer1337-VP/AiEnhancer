@@ -273,145 +273,153 @@ export const refineEnhancedPrompt = async (
   }
 };
 
+export const superEnhanceImagePrompt = async (
+  currentPrompt: EnhancedPrompt,
+  model: ImageModel
+): Promise<EnhancedPrompt> => {
+  try {
+    const modelNameMapping = {
+      midjourney: 'Midjourney',
+      nanobanana: 'NanoBanana (Google Gemini Image)',
+      flux: 'Flux (Stable Diffusion 3)',
+      wan: 'Wan (a cinematic and anime-focused model)'
+    };
+    const targetModelName = modelNameMapping[model];
+
+    const systemInstruction = `You are an elite, world-class AI prompt engineer and a master of visual storytelling, specializing in the **${targetModelName}** image generator. You will be given a well-structured JSON prompt. Your mission is to elevate it to an award-winning, professional standard.
+
+**Your Task:**
+1.  **Deepen the Narrative:** Analyze the core concept of the provided JSON prompt.
+2.  **Amplify Every Detail:** Go through every field of the JSON object and expand upon it. Make the 'subject' description hyperrealistic and vivid. Make the 'style' more nuanced and specific. Make the 'technical' details more professional and cinematic. Make the 'scene_setup' richer with more sensory information.
+3.  **Maintain the Core:** Do NOT change the fundamental story, subject, or composition. Your goal is to enhance, not replace.
+4.  **Return JSON:** Your output must be ONLY the new, more detailed JSON object, strictly adhering to the original schema. Do not add any extra text or explanations.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-pro", // Using a more powerful model for enhancement
+      contents: `Here is the current JSON prompt. Enhance it: ${JSON.stringify(currentPrompt, null, 2)}`,
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: imageResponseSchema,
+        temperature: 0.85,
+      },
+    });
+
+    const jsonText = response.text.trim();
+    return JSON.parse(jsonText) as EnhancedPrompt;
+  } catch (error) {
+    console.error("Error calling Gemini API for image prompt super enhancement:", error);
+    throw new Error("Failed to super-enhance the prompt.");
+  }
+};
+
 
 // --- VIDEO PROMPT GENERATION ---
 
 const videoResponseSchema = {
   type: Type.OBJECT,
   properties: {
-    prompt_type: { type: Type.STRING, description: "The prompt type, enclosed in square brackets. E.g., '[SCENE]' or '[MOTION]'." },
-    style: {
-      type: Type.OBJECT,
-      properties: {
-        primary_style: { type: Type.STRING, description: "Primary style, e.g., 'Cinematic', 'Hyperrealistic'." },
-        secondary_style: { type: Type.STRING, description: "Secondary style or medium, e.g., '8K RAW photo', 'Shot on 8mm film'." },
-        artistic_influence: { type: Type.STRING, description: "Specific artists or genres, e.g., 'in the style of Wes Anderson'." },
-        color_palette: { type: Type.STRING, description: "Color description, e.g., 'Vibrant neon colors', 'Monochromatic'." },
-      },
-      required: ['primary_style', 'secondary_style', 'artistic_influence', 'color_palette']
+    description: { type: Type.STRING, description: "Cinematic description of the scene, including main object or product and key action. Keep it vivid, sensory-rich, and visual." },
+    style: { type: Type.STRING, description: "Define tone and look — e.g., photorealistic, cinematic, futuristic, minimalistic, magical realism." },
+    camera: { type: Type.STRING, description: "Describe camera type and movement — e.g., wide shot, dolly in, crane up, orbital shot, slow zoom. Use syntax like '(thats where the camera is)' for critical positioning." },
+    lighting: { type: Type.STRING, description: "Describe overall light mood and transitions — e.g., morning sunlight, neon glow, golden hour, or studio lighting." },
+    environment: { type: Type.STRING, description: "Briefly describe the setting or background — e.g., kitchen, beach, city plaza, showroom." },
+    elements: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "List each key visual element or object appearing in the scene in order of importance, each element should be descriptive."
     },
-    subject: {
-      type: Type.OBJECT,
-      properties: {
-        full_description: { type: Type.STRING, description: "The complete, detailed subject description. Use double parentheses `((word))` for heavy emphasis and single `(word)` for light emphasis." },
-        multi_prompts: {
-          type: Type.ARRAY,
-          description: "An array of concepts to be blended using multi-prompting. Only use this if the user's idea implies blending distinct concepts (e.g., 'robot knight'). If not applicable, return an empty array.",
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              concept: { type: Type.STRING },
-              weight: { type: Type.NUMBER },
-            },
-            required: ['concept', 'weight']
-          }
-        },
-      },
-      required: ['full_description', 'multi_prompts']
-    },
-    action: { type: Type.STRING, description: "The vivid action the subject is performing." },
-    environment: { type: Type.STRING, description: "A rich description of the scene's environment or background." },
-    composition: {
-      type: Type.OBJECT,
-      properties: {
-        shot_type: { type: Type.STRING, description: "Shot type, e.g., 'Wide Angle Shot', 'Close-up'." },
-        camera_angle: { type: Type.STRING, description: "Camera angle, e.g., 'Low angle', 'Aerial view'." },
-        camera_movement: { type: Type.STRING, description: "Camera movement, e.g., 'Dolly zoom', 'Time-lapse'." },
-      },
-      required: ['shot_type', 'camera_angle', 'camera_movement']
-    },
-    lighting: {
-      type: Type.OBJECT,
-      properties: {
-        style: { type: Type.STRING, description: "Lighting style, e.g., 'Cinematic Lighting', 'Golden Hour'." },
-        effect: { type: Type.STRING, description: "Specific lighting effects, e.g., 'Volumetric rays', 'Lens flare'." },
-      },
-      required: ['style', 'effect']
-    },
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        aspect_ratio: { type: Type.STRING, description: "Aspect ratio, e.g., '16:9' or '9:16'." },
-        negative_prompt: { type: Type.STRING, description: "Comma-separated keywords to exclude, e.g., 'blurry, grainy, watermark'." },
-        seed: { type: Type.NUMBER, description: "A seed number for repeatable results, or null.", nullable: true },
-        stylize: { type: Type.NUMBER, description: "Stylization value (0-1000), or null.", nullable: true },
-        chaos: { type: Type.NUMBER, description: "Chaos value (0-100), or null.", nullable: true },
-        quality: { type: Type.STRING, description: "Quality setting (e.g., '0.5', '1'), or null.", nullable: true },
-        weird: { type: Type.NUMBER, description: "Weirdness value (0-3000), or null.", nullable: true },
-        tile: { type: Type.BOOLEAN, description: "Whether the output should be a seamless tile." },
-      },
-      required: ['aspect_ratio', 'negative_prompt', 'seed', 'stylize', 'chaos', 'quality', 'weird', 'tile']
-    },
-    final_prompt: { type: Type.STRING, description: "The final, assembled prompt string ready to be used in VEO, constructed from all the other fields." }
+    motion: { type: Type.STRING, description: "Describe how elements move or transform dynamically (e.g., slow-motion pour, product assembles mid-air)." },
+    ending: { type: Type.STRING, description: "Define the final visual moment or reveal (e.g., product centered, perfect composition, calm fade-out)." },
+    text: { type: Type.STRING, description: "Add tagline text if needed or 'none' if no text appears." },
+    audio: { type: Type.STRING, description: "Complete audio landscape. For dialogue, use 'Character Name: dialogue text' syntax with NO CAPS and max 1-2 short sentences. Include ambient sounds and SFX." },
+    keywords: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "A list of keywords including aspect ratio, brand name, core theme, visual tone, movement style, lighting style, and 'no text'."
+    }
   },
-  required: ['prompt_type', 'style', 'subject', 'action', 'environment', 'composition', 'lighting', 'parameters', 'final_prompt']
+  required: ['description', 'style', 'camera', 'lighting', 'environment', 'elements', 'motion', 'ending', 'text', 'audio', 'keywords']
 };
 
 
 export const generateEnhancedVideoPrompt = async (
   simplePrompt: string,
-  imageBase64: string,
+  firstFrameBase64: string,
+  lastFrameBase64: string | null,
   language: 'en' | 'ru',
   model: VideoModel,
   enhancementPower: number = 3
 ): Promise<EnhancedVideoPrompt> => {
   try {
     const modelNameMapping = {
-      veo: 'Google VEO',
+      veo: 'Google VEO 3.1',
       wan: 'Wan (a cinematic and anime-focused model)',
       grok: 'Grok (a hypothetical narrative-focused video model)'
     };
     const targetModelName = modelNameMapping[model];
     const powerDescription = getPowerDescription(enhancementPower);
 
-    const systemInstruction = `You are a master VEO prompt engineer and an expert in the official Google VEO Prompting Guide. Your goal is to convert a user's idea and a starting frame image into an expertly crafted, structured JSON prompt for the VEO video generation model.
+    const systemInstruction = `You are a world-class creative director and AI prompt engineer, a master of the Google VEO 3.1 video generation model. Your mission is to transform user inputs (text, start/end frames) into an exceptionally detailed, technically compliant, structured JSON shot brief for **${targetModelName}**. Your output must strictly adhere to VEO 3.1's constraints.
 
-**Your Process & Rules:**
+**VEO 3.1 Core Rules (CRITICAL - YOU MUST FOLLOW):**
+1.  **Consistency**: Descriptions of characters, settings, props, and lighting MUST be repeated EXACTLY verbatim if they are unchanged. Your prompt should focus on describing the VARIABLE elements (action, dialogue, camera movement).
+2.  **Audio**: You MUST explicitly define the audio landscape to prevent hallucinations.
+3.  **Dialogue**:
+    *   Use colon syntax: \`Character Name: The dialogue text.\`
+    *   NO CAPS LOCK in dialogue. Use standard casing.
+    *   Dialogue must be short: 1-2 sentences maximum (approx. 12-15 words).
 
-1.  **Analyze Input**: Deeply analyze the user's idea (in ${language === 'ru' ? 'Russian' : 'English'}) and the provided first-frame image. The generated video should be a natural continuation or an enhanced version of the provided image.
-2.  **Populate JSON**: Fill out every field of the JSON object with rich, creative, and specific details based on your analysis.
-3.  **Subject & Multi-Prompting**:
-    *   For the \`subject.full_description\`, be extremely detailed. Use double parentheses \`((word))\` for heavy emphasis and single \`(word)\` for light emphasis on key elements.
-    *   If the user's idea blends two distinct concepts (e.g., "a cat astronaut"), use the \`subject.multi_prompts\` array. For "a cat astronaut", you would create \`[{ "concept": "cat", "weight": 1 }, { "concept": "astronaut", "weight": 1 }]\`. If one is more important, adjust the weights. If it's just a single concept, leave the array empty.
-4.  **Style & Cinematography**: Be specific. Use terms like "Cinematic," "Hyperrealistic," "Shot on 8mm film," "Low-angle shot," "Dolly zoom," "Golden hour," "Vibrant colors."
-5.  **Parameters**: Provide sensible default values. \`aspect_ratio\` should be '16:9' or '9:16'. Leave numeric fields as \`null\` if not directly implied. Set \`tile\` to \`false\` unless requested.
-6.  **Assemble \`final_prompt\` (CRITICAL)**: This is the most important step. You must construct the final prompt string by concatenating the other fields in a precise order and syntax.
+**Your Generation Process:**
 
-**Final Prompt Assembly Rules:**
+**Step 1: Deep Frame Analysis**
+*   **Analyze First Frame**: Perform a forensic analysis. For characters, define 15+ attributes (age, ethnicity, build, hair color/style, eye color, facial structure, specific attire top to bottom, accessories, distinguishing features). For the environment, detail the location, props, time of day, and atmosphere. Deconstruct composition, lighting, and artistic style.
+*   **Analyze Last Frame (if provided)**: Perform the same forensic analysis.
+*   **Synthesize the "Delta"**: Identify the core narrative of the 8-second clip. What is the fundamental change or transformation that occurs between the first and last frame? This is the story you must tell.
 
-*   **Structure:** \`[Prompt Type] (Styles) [Subject/Multi-Prompt] [Action] in a [Environment], (Composition), (Lighting) --parameters\`
-*   **Styles/Composition/Lighting:** Every single descriptor from these sections (e.g., "Cinematic", "8K RAW photo", "Low angle") MUST be wrapped in its own individual parentheses \`()\`.
-*   **Subject:** If \`multi_prompts\` has items, format it as \`[concept1]::[weight1] [concept2]::[weight2]\`. If not, use the \`subject.full_description\`.
-*   **Parameters:**
-    *   Format as \`--ar [aspect_ratio]\`.
-    *   Format negative prompt as \`--no [negative_prompt]\`.
-    *   Format others as \`--[param] [value]\`, e.g., \`--s 750\`, \`--c 20\`.
-    *   Include \`--tile\` only if \`tile\` is true.
+**Step 2: Synthesize the JSON Shot Brief**
+Based on your analysis and the user's text prompt, populate the JSON brief. The user's prompt is a guide for the narrative "delta".
+*   **If both frames are provided**: Your primary goal is to create a seamless and logical cinematic transition. The 'description', 'motion', and 'camera' fields must explicitly detail the transformation from the start state to the end state.
+*   **If only the first frame is provided**: The user's text prompt is the driving force of the narrative. The video must evolve naturally from the starting frame, following the prompt's instructions. Invent a logical and creative ending.
 
-**High-Quality Example:**
-*User Idea:* "A crystal wolf running through a neon forest."
-*Resulting \`final_prompt\`*: \`[MOTION] (Cinematic) (Hyperrealistic) (Vibrant neon colors) a ((crystal wolf)) with glowing blue eyes running swiftly through a dense, neon-lit forest, (Medium shot), (Tracking shot), (Low angle), (Dramatic Lighting), (Volumetric rays) --ar 16:9 --no blurry, cartoon --s 800 --c 10\`
+**Step 3: Populate JSON Fields (Field-by-Field Guidance)**
+*   **description**: A vivid, sensory-rich paragraph describing the core action and transformation. This is the narrative heart of the shot.
+*   **style**: Use professional terms: 'photorealistic, shot on ARRI Alexa 65', 'cinematic anime', 'dramatic noir'.
+*   **camera**: Be specific and technical. Describe the camera movement that connects the first frame's composition to the last (e.g., 'A slow, dramatic dolly zoom that pushes in on the character\\'s face'). Use syntax like \`(thats where the camera is)\` for critical positioning.
+*   **lighting**: Describe the lighting and how it evolves (e.g., 'Hard key light softens into a diffused golden hour glow').
+*   **environment**: Describe the setting with verbatim consistency for unchanged elements.
+*   **elements**: List key visual components, noting their transformation.
+*   **motion**: Critically describe the dynamics of the scene's evolution. How do things move and change?
+*   **ending**: Describe the final frame's composition and mood.
+*   **text**: Include any requested text or 'none'.
+*   **audio**: Describe the complete audio landscape. Follow the critical dialogue rules above. Include ambient sounds and specific SFX (e.g., \`Ambience: distant city traffic, soft rain. SFX: a sharp gasp, a key turning in a lock.\`).
+*   **keywords**: Compile essential tags. MUST include aspect ratio (default to '16:9'). Include themes, styles, and core actions.
 
-Your output MUST be a single, valid JSON object in English adhering strictly to the provided schema. ${powerDescription} Tailor the prompt for the **${targetModelName}** video generator.`;
+**Final Output Rules**: Your output MUST be a single, valid JSON object in English, strictly following the schema. Do not add any extra text or explanations. ${powerDescription}`;
     
-    const match = imageBase64.match(/^data:(image\/[a-z]+);base64,(.*)$/);
-    if (!match) {
-      throw new Error("Invalid base64 image format.");
+    const partsForApi: any[] = [];
+    
+    const textPromptPart = simplePrompt.trim()
+        ? `User's idea (in ${language === 'ru' ? 'Russian' : 'English'}): "${simplePrompt}".`
+        : "The user did not provide a text prompt; rely on the image(s) for creative direction.";
+    
+    partsForApi.push({ text: textPromptPart });
+    
+    const firstFrameMatch = firstFrameBase64.match(/^data:(image\/[a-z]+);base64,(.*)$/);
+    if (!firstFrameMatch) throw new Error("Invalid first frame image format.");
+    partsForApi.push({ text: "--- FIRST FRAME (start of video) ---" });
+    partsForApi.push({ inlineData: { mimeType: firstFrameMatch[1], data: firstFrameMatch[2] } });
+
+    if (lastFrameBase64) {
+      const lastFrameMatch = lastFrameBase64.match(/^data:(image\/[a-z]+);base64,(.*)$/);
+      if (!lastFrameMatch) throw new Error("Invalid last frame image format.");
+      partsForApi.push({ text: "--- LAST FRAME (end of video) ---" });
+      partsForApi.push({ inlineData: { mimeType: lastFrameMatch[1], data: lastFrameMatch[2] } });
     }
-    const mimeType = match[1];
-    const data = match[2];
-
-    const imagePart = {
-      inlineData: { mimeType, data },
-    };
-    
-    const textPart = {
-      text: `User's idea (in ${language === 'ru' ? 'Russian' : 'English'}): "${simplePrompt}". Based on the provided image as the first frame, generate the detailed video prompt.`,
-    };
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: { parts: [imagePart, textPart] },
+      contents: { parts: partsForApi },
       config: {
         systemInstruction,
         responseMimeType: "application/json",
@@ -437,22 +445,18 @@ export const refineEnhancedVideoPrompt = async (
 ): Promise<EnhancedVideoPrompt> => {
    try {
     const modelNameMapping = {
-      veo: 'Google VEO',
+      veo: 'Google VEO 3.1',
       wan: 'Wan (a cinematic and anime-focused model)',
       grok: 'Grok (a hypothetical narrative-focused video model)'
     };
     const targetModelName = modelNameMapping[model];
 
-    const systemInstruction = `You are an AI assistant that refines detailed JSON prompts for the **${targetModelName}** video generator, based on the official Google VEO Prompting Guide. You will be given a JSON object representing the current prompt and a user's request for modification.
+    const systemInstruction = `You are an AI assistant that refines detailed JSON-based cinematic shot briefs for the **${targetModelName}** video generator, which is based on Google VEO. You will be given a JSON object representing the current brief and a user's request for modification.
 
 **Your task is to:**
-1.  Apply the user's modification to the relevant fields in the JSON object. You might need to add or modify multi-prompts, change styles, or adjust parameters.
-2.  **CRITICAL:** Re-assemble the 'final_prompt' string based on ALL the updated fields. The final string MUST strictly follow the VEO prompt syntax rules:
-    *   **Structure:** \`[Prompt Type] (Styles) [Subject/Multi-Prompt] [Action] in a [Environment], (Composition), (Lighting) --parameters\`
-    *   **Parentheses:** Wrap every individual style, composition, and lighting descriptor in its own parentheses \`()\`.
-    *   **Multi-Prompt:** If applicable, use the \`[concept]::[weight]\` syntax.
-    *   **Parameters:** Correctly format all parameters (\`--ar\`, \`--no\`, \`--s\`, etc.).
-3.  Return the new, valid JSON object. Do not add any explanatory text, just the JSON.`;
+1.  Apply the user's modification to the relevant fields in the JSON object. Maintain a professional, cinematic tone.
+2.  Ensure all fields remain logical and consistent with each other after the change. For example, if the user asks for a 'dark mood', you should update the 'lighting' and 'style' fields accordingly.
+3.  Return the new, valid JSON object that strictly adheres to the original schema. Do not add any explanatory text, just the JSON.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -470,6 +474,45 @@ export const refineEnhancedVideoPrompt = async (
   } catch (error) {
     console.error("Error calling Gemini API for video prompt refinement:", error);
     throw new Error("Failed to refine the prompt.");
+  }
+};
+
+export const superEnhanceVideoPrompt = async (
+  currentPrompt: EnhancedVideoPrompt,
+  model: VideoModel
+): Promise<EnhancedVideoPrompt> => {
+  try {
+    const modelNameMapping = {
+      veo: 'Google VEO 3.1',
+      wan: 'Wan (a cinematic and anime-focused model)',
+      grok: 'Grok (a hypothetical narrative-focused video model)'
+    };
+    const targetModelName = modelNameMapping[model];
+
+    const systemInstruction = `You are an elite, world-class creative director and AI prompt engineer, specializing in the **${targetModelName}** video generator. You will be given a well-structured JSON shot brief. Your mission is to elevate it to an award-winning, professional standard.
+
+**Your Task:**
+1.  **Deepen the Narrative:** Analyze the core concept of the provided brief.
+2.  **Amplify Every Detail:** Go through every field of the JSON object and expand upon it. Make the 'description' more vivid and sensory. Make the 'camera' movements more complex and specific. Make the 'lighting' more nuanced. Make the 'audio' landscape richer with more layers of sound.
+3.  **Maintain the Core:** Do NOT change the fundamental story or subject. Your goal is to enhance, not replace.
+4.  **Return JSON:** Your output must be ONLY the new, more detailed JSON object, strictly adhering to the original schema. Do not add any extra text or explanations.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-pro",
+      contents: `Here is the current JSON brief. Enhance it: ${JSON.stringify(currentPrompt, null, 2)}`,
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: videoResponseSchema,
+        temperature: 0.85,
+      },
+    });
+
+    const jsonText = response.text.trim();
+    return JSON.parse(jsonText) as EnhancedVideoPrompt;
+  } catch (error) {
+    console.error("Error calling Gemini API for video prompt super enhancement:", error);
+    throw new Error("Failed to super-enhance the prompt.");
   }
 };
 
@@ -585,6 +628,7 @@ The final output must be a JSON object in English that strictly follows the prov
   }
 };
 
+// FIX: This function was incomplete and caused a compile error. It has been implemented to refine an existing edit prompt.
 export const refineEnhancedEditPrompt = async (
   currentPrompt: EnhancedEditPrompt,
   refinementRequest: string,
@@ -597,11 +641,7 @@ export const refineEnhancedEditPrompt = async (
     };
     const targetModelName = modelNameMapping[model];
 
-    const systemInstruction = `You are an AI assistant that refines detailed JSON prompts for the **${targetModelName}** image editing model. You will be given a JSON object representing the current prompt and a user's request for modification.
-
-**CRITICAL GOAL:** Your primary task is to update the 'master_prompt' to be a direct, concise command to EDIT the image, reflecting the user's new request. Do NOT re-describe the entire scene in the master prompt. Focus only on the change.
-
-Your task is to apply the modification and return a new, valid JSON object that strictly adheres to the original schema. Do not add any explanatory text, just output the modified JSON. Ensure the refinement logically integrates with the existing prompt details.`;
+    const systemInstruction = `You are an AI assistant that refines detailed JSON prompts for the **${targetModelName}** image editing model. You will be given a JSON object representing the current edit prompt and a user's request for modification. Your task is to apply the modification and return a new, valid JSON object that strictly adheres to the original schema. The 'master_prompt' should be a concise, direct command for the edit. Do not add any explanatory text, just output the modified JSON.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -610,14 +650,15 @@ Your task is to apply the modification and return a new, valid JSON object that 
         systemInstruction,
         responseMimeType: "application/json",
         responseSchema: editResponseSchema,
-        temperature: 0.8,
+        temperature: 0.7,
       },
     });
-    
+
     const jsonText = response.text.trim();
     return JSON.parse(jsonText) as EnhancedEditPrompt;
+
   } catch (error) {
     console.error("Error calling Gemini API for edit prompt refinement:", error);
-    throw new Error("Failed to refine the prompt.");
+    throw new Error("Failed to refine the edit prompt.");
   }
 };

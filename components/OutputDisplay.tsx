@@ -6,17 +6,25 @@ import { TextIcon } from './icons/TextIcon';
 import { SendIcon } from './icons/SendIcon';
 import { ClipboardIcon } from './icons/ClipboardIcon';
 import { CheckIcon } from './icons/CheckIcon';
+import { SparklesIcon } from './icons/SparklesIcon';
 
 // Prop definitions
 interface OutputDisplayProps {
   output: EnhancedPrompt | EnhancedVideoPrompt | EnhancedEditPrompt | null;
   isLoading: boolean;
   isRefining: boolean;
+  isSuperEnhancing: boolean;
   error: string | null;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   onRefine: (refinementPrompt: string) => void;
+  onSuperEnhance: () => void;
 }
+
+// Type guards to differentiate between prompt types
+const isImagePrompt = (o: any): o is EnhancedPrompt => o && o.prompt && 'core' in o.prompt;
+const isVideoPrompt = (o: any): o is EnhancedVideoPrompt => o && 'description' in o && 'keywords' in o && 'camera' in o;
+const isEditPrompt = (o: any): o is EnhancedEditPrompt => o && 'master_prompt' in o;
 
 // Helper component for collapsible sections
 const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
@@ -45,7 +53,7 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode; d
 
 // Helper for rendering key-value pairs
 const Detail: React.FC<{ label: string; value: string | string[] | number | null | undefined }> = ({ label, value }) => {
-    if (value === null || value === undefined || value === '') return null;
+    if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) return null;
     return (
       <div className="mb-3">
         <strong className="text-gray-400 block font-medium">{label}:</strong>
@@ -54,7 +62,7 @@ const Detail: React.FC<{ label: string; value: string | string[] | number | null
             {value.map((item, index) => <li key={index} className="text-gray-200">{item}</li>)}
           </ul>
         ) : (
-          <span className="text-gray-200">{value}</span>
+          <span className="text-gray-200 whitespace-pre-wrap">{value}</span>
         )}
       </div>
     );
@@ -109,10 +117,12 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
   output,
   isLoading,
   isRefining,
+  isSuperEnhancing,
   error,
   viewMode,
   setViewMode,
   onRefine,
+  onSuperEnhance,
 }) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [selectedSections, setSelectedSections] = useState<Record<ImagePromptSection, boolean>>({
@@ -292,64 +302,30 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
   const renderVideoView = (data: EnhancedVideoPrompt) => (
     <div>
       <RefineInput onRefine={onRefine} isRefining={isRefining} />
-      <CollapsibleSection title="Final VEO Prompt" defaultOpen={true}>
-        <div className="relative">
-          <button
-            onClick={() => handleCopy(data.final_prompt, 'video-final')}
-            className="absolute top-2 right-2 p-1.5 bg-gray-700/80 hover:bg-gray-600 rounded-md text-gray-300 hover:text-white transition-colors z-10"
-            aria-label="Copy prompt"
-          >
-            {copiedKey === 'video-final' ? (
-              <CheckIcon className="w-4 h-4 text-green-400" />
-            ) : (
-              <ClipboardIcon className="w-4 h-4" />
-            )}
-          </button>
-          <p className="text-gray-300 bg-gray-900 p-3 rounded-md font-mono text-sm whitespace-pre-wrap">{data.final_prompt}</p>
+      
+      <CollapsibleSection title="Cinematic Description" defaultOpen={true}>
+        <div className="p-1">
+          <p className="text-gray-200 whitespace-pre-wrap">{data.description}</p>
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Core Narrative" defaultOpen={true}>
-        <Detail label="Prompt Type" value={data.prompt_type} />
-        {data.subject.multi_prompts && data.subject.multi_prompts.length > 0 ? (
-            <div className="mb-3">
-                <strong className="text-gray-400 block font-medium">Blended Subject (Multi-Prompt):</strong>
-                <ul className="list-disc list-inside ml-2 text-cyan-300 space-y-1 mt-1">
-                    {data.subject.multi_prompts.map((mp, index) => (
-                        <li key={index} className="text-gray-200">{mp.concept} (Weight: {mp.weight})</li>
-                    ))}
-                </ul>
-            </div>
-        ) : (
-            <Detail label="Subject" value={data.subject.full_description} />
-        )}
-        <Detail label="Action" value={data.action} />
+      <CollapsibleSection title="Shot Details" defaultOpen={true}>
+        <Detail label="Style" value={data.style} />
+        <Detail label="Camera" value={data.camera} />
+        <Detail label="Lighting" value={data.lighting} />
         <Detail label="Environment" value={data.environment} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Style & Cinematography">
-        <Detail label="Primary Style" value={data.style.primary_style} />
-        <Detail label="Secondary Style" value={data.style.secondary_style} />
-        <Detail label="Artistic Influence" value={data.style.artistic_influence} />
-        <Detail label="Color Palette" value={data.style.color_palette} />
-        <div className="my-4 border-t border-gray-700/50"></div>
-        <Detail label="Shot Type" value={data.composition.shot_type} />
-        <Detail label="Camera Angle" value={data.composition.camera_angle} />
-        <Detail label="Camera Movement" value={data.composition.camera_movement} />
-        <div className="my-4 border-t border-gray-700/50"></div>
-        <Detail label="Lighting Style" value={data.lighting.style} />
-        <Detail label="Lighting Effect" value={data.lighting.effect} />
+      <CollapsibleSection title="Scene Elements & Motion">
+        <Detail label="Key Elements" value={data.elements} />
+        <Detail label="Motion" value={data.motion} />
+        <Detail label="Ending" value={data.ending} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Technical Parameters">
-        <Detail label="Aspect Ratio" value={`--ar ${data.parameters.aspect_ratio}`} />
-        {data.parameters.negative_prompt && <Detail label="Negative Prompt" value={`--no ${data.parameters.negative_prompt}`} />}
-        {data.parameters.seed != null && <Detail label="Seed" value={`--seed ${data.parameters.seed}`} />}
-        {data.parameters.stylize != null && <Detail label="Stylize" value={`--s ${data.parameters.stylize}`} />}
-        {data.parameters.chaos != null && <Detail label="Chaos" value={`--c ${data.parameters.chaos}`} />}
-        {data.parameters.quality != null && <Detail label="Quality" value={`--q ${data.parameters.quality}`} />}
-        {data.parameters.weird != null && <Detail label="Weird" value={`--weird ${data.parameters.weird}`} />}
-        {data.parameters.tile && <Detail label="Tile" value="--tile" />}
+      <CollapsibleSection title="Metadata">
+        <Detail label="Text / Tagline" value={data.text} />
+        <Detail label="Audio" value={data.audio} />
+        <Detail label="Keywords" value={data.keywords} />
       </CollapsibleSection>
     </div>
   );
@@ -425,12 +401,6 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
         </div>
       );
     }
-    
-    // Type guards to differentiate between prompt types
-    const isImagePrompt = (o: any): o is EnhancedPrompt => o && o.prompt && 'core' in o.prompt;
-    const isVideoPrompt = (o: any): o is EnhancedVideoPrompt => o && 'final_prompt' in o && o.prompt_type && o.subject && 'full_description' in o.subject;
-    const isEditPrompt = (o: any): o is EnhancedEditPrompt => o && 'master_prompt' in o;
-
 
     if (viewMode === 'json') {
       const jsonString = JSON.stringify(output, null, 2);
@@ -475,26 +445,50 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl flex flex-col h-full">
-      <div className="flex justify-between items-center p-4 border-b border-gray-700">
+      <div className="flex justify-between items-center p-4 border-b border-gray-700 flex-wrap gap-2">
         <h2 className="text-2xl font-semibold text-gray-100">Enhanced Prompt</h2>
         {output && !isLoading && (
-            <div className="flex items-center gap-2 bg-gray-900/50 p-1 rounded-lg">
-                <button 
-                    onClick={() => setViewMode('text')} 
-                    className={`${buttonBaseClasses} ${viewMode === 'text' ? activeClasses : inactiveClasses}`}
-                    aria-pressed={viewMode === 'text'}
-                >
-                    <TextIcon className="w-4 h-4"/>
-                    <span>Text</span>
-                </button>
-                <button 
-                    onClick={() => setViewMode('json')} 
-                    className={`${buttonBaseClasses} ${viewMode === 'json' ? activeClasses : inactiveClasses}`}
-                    aria-pressed={viewMode === 'json'}
-                >
-                    <CodeIcon className="w-4 h-4"/>
-                    <span>JSON</span>
-                </button>
+            <div className="flex items-center gap-2">
+               {(isImagePrompt(output) || isVideoPrompt(output)) && viewMode === 'text' && (
+                  <button
+                    onClick={onSuperEnhance}
+                    disabled={isSuperEnhancing || isRefining}
+                    className="px-3 py-1.5 rounded-md text-sm font-semibold flex items-center gap-2 transition-colors duration-200 bg-purple-600 hover:bg-purple-500 text-white disabled:bg-gray-600 disabled:cursor-not-allowed"
+                  >
+                    {isSuperEnhancing ? (
+                        <>
+                           <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                           </svg>
+                           <span>Enhancing...</span>
+                        </>
+                    ) : (
+                        <>
+                           <SparklesIcon className="w-4 h-4" />
+                           <span>Make it even more enhanced</span>
+                        </>
+                    )}
+                  </button>
+                )}
+                <div className="flex items-center gap-2 bg-gray-900/50 p-1 rounded-lg">
+                    <button 
+                        onClick={() => setViewMode('text')} 
+                        className={`${buttonBaseClasses} ${viewMode === 'text' ? activeClasses : inactiveClasses}`}
+                        aria-pressed={viewMode === 'text'}
+                    >
+                        <TextIcon className="w-4 h-4"/>
+                        <span>Text</span>
+                    </button>
+                    <button 
+                        onClick={() => setViewMode('json')} 
+                        className={`${buttonBaseClasses} ${viewMode === 'json' ? activeClasses : inactiveClasses}`}
+                        aria-pressed={viewMode === 'json'}
+                    >
+                        <CodeIcon className="w-4 h-4"/>
+                        <span>JSON</span>
+                    </button>
+                </div>
             </div>
         )}
       </div>

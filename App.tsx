@@ -6,7 +6,7 @@ import { VideoPromptInput } from './components/VideoPromptInput';
 import { EditPromptInput } from './components/EditPromptInput';
 import { OutputDisplay } from './components/OutputDisplay';
 import { HistorySidebar } from './components/HistorySidebar';
-import { generateEnhancedPrompt, generateEnhancedVideoPrompt, generateEnhancedEditPrompt, refineEnhancedPrompt, refineEnhancedVideoPrompt, refineEnhancedEditPrompt } from './services/geminiService';
+import { generateEnhancedPrompt, generateEnhancedVideoPrompt, generateEnhancedEditPrompt, refineEnhancedPrompt, refineEnhancedVideoPrompt, refineEnhancedEditPrompt, superEnhanceVideoPrompt, superEnhanceImagePrompt } from './services/geminiService';
 import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode, ImageModel, VideoModel, EditModel, HistoryItem } from './types';
 
 export type AppMode = 'image' | 'video' | 'edit';
@@ -16,6 +16,7 @@ const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>('image');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isRefining, setIsRefining] = useState<boolean>(false);
+  const [isSuperEnhancing, setIsSuperEnhancing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('text');
   const [language, setLanguage] = useState<'en' | 'ru'>('en');
@@ -31,6 +32,7 @@ const App: React.FC = () => {
   // Video-specific state
   const [videoPrompt, setVideoPrompt] = useState<string>('');
   const [firstFrame, setFirstFrame] = useState<string | null>(null);
+  const [lastFrame, setLastFrame] = useState<string | null>(null);
   const [videoModel, setVideoModel] = useState<VideoModel>('veo');
   const [videoOutput, setVideoOutput] = useState<EnhancedVideoPrompt | null>(null);
 
@@ -84,19 +86,20 @@ const App: React.FC = () => {
   }, [imagePrompt, language, imageModel, characterReference, compositionReference, enhancementPower]);
 
   const handleVideoGenerate = useCallback(async () => {
-    if (!videoPrompt.trim()) {
-      setError('Please enter a prompt.');
-      return;
-    }
     if (!firstFrame) {
       setError('Please upload a first frame image.');
       return;
     }
+    if (!lastFrame && !videoPrompt.trim()) {
+      setError('Please enter a prompt if you are not providing a last frame.');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedVideoPrompt(videoPrompt, firstFrame, language, videoModel, enhancementPower);
+      const result = await generateEnhancedVideoPrompt(videoPrompt, firstFrame, lastFrame, language, videoModel, enhancementPower);
       setVideoOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -106,6 +109,7 @@ const App: React.FC = () => {
         model: videoModel,
         output: result,
         firstFrame: firstFrame,
+        lastFrame: lastFrame,
         enhancementPower,
       };
       setHistory(prev => [newHistoryItem, ...prev]);
@@ -116,7 +120,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [videoPrompt, firstFrame, language, videoModel, enhancementPower]);
+  }, [videoPrompt, firstFrame, lastFrame, language, videoModel, enhancementPower]);
   
   const handleEditGenerate = useCallback(async () => {
     if (!editPrompt.trim()) {
@@ -190,6 +194,40 @@ const App: React.FC = () => {
     }
 
   }, [mode, imageOutput, videoOutput, editOutput, imageModel, videoModel, editModel, activeHistoryId]);
+
+  const handleSuperEnhance = useCallback(async () => {
+    if ((mode !== 'video' || !videoOutput) && (mode !== 'image' || !imageOutput)) return;
+
+    setIsSuperEnhancing(true);
+    setError(null);
+
+    try {
+      if (mode === 'video' && videoOutput) {
+        const newOutput = await superEnhanceVideoPrompt(videoOutput, videoModel);
+        setVideoOutput(newOutput);
+        
+        if (activeHistoryId) {
+          setHistory(prev => prev.map(item => 
+            (item.id === activeHistoryId && item.type === 'video') ? { ...item, output: newOutput } : item
+          ));
+        }
+      } else if (mode === 'image' && imageOutput) {
+        const newOutput = await superEnhanceImagePrompt(imageOutput, imageModel);
+        setImageOutput(newOutput);
+
+        if (activeHistoryId) {
+          setHistory(prev => prev.map(item => 
+            (item.id === activeHistoryId && item.type === 'image') ? { ...item, output: newOutput } : item
+          ));
+        }
+      }
+    } catch (e: any) {
+      console.error(e);
+      setError(`Failed to super-enhance prompt. ${e.message || 'Please try again.'}`);
+    } finally {
+      setIsSuperEnhancing(false);
+    }
+  }, [mode, videoOutput, videoModel, imageOutput, imageModel, activeHistoryId]);
   
   const handleSelectHistory = useCallback((id: string) => {
     const item = history.find(h => h.id === id);
@@ -203,7 +241,7 @@ const App: React.FC = () => {
     
     // Reset all inputs and outputs before setting the active one
     setImagePrompt(''); setImageOutput(null); setCharacterReference(null); setCompositionReference(null);
-    setVideoPrompt(''); setVideoOutput(null); setFirstFrame(null);
+    setVideoPrompt(''); setVideoOutput(null); setFirstFrame(null); setLastFrame(null);
     setEditPrompt(''); setEditOutput(null); setEditImage(null);
 
     if (item.type === 'image') {
@@ -217,6 +255,7 @@ const App: React.FC = () => {
       setVideoModel(item.model);
       setVideoOutput(item.output);
       setFirstFrame(item.firstFrame);
+      setLastFrame(item.lastFrame || null);
     } else if (item.type === 'edit') {
       setEditPrompt(item.simplePrompt);
       setEditModel(item.model);
@@ -235,6 +274,7 @@ const App: React.FC = () => {
     setVideoPrompt('');
     setVideoOutput(null);
     setFirstFrame(null);
+    setLastFrame(null);
     setEditPrompt('');
     setEditOutput(null);
     setEditImage(null);
@@ -271,6 +311,8 @@ const App: React.FC = () => {
           setLanguage={setLanguage}
           firstFrame={firstFrame}
           setFirstFrame={setFirstFrame}
+          lastFrame={lastFrame}
+          setLastFrame={setLastFrame}
           videoModel={videoModel}
           setVideoModel={setVideoModel}
           enhancementPower={enhancementPower}
@@ -313,10 +355,12 @@ const App: React.FC = () => {
               output={currentOutput}
               isLoading={isLoading}
               isRefining={isRefining}
+              isSuperEnhancing={isSuperEnhancing}
               error={error}
               viewMode={viewMode}
               setViewMode={setViewMode}
               onRefine={handleRefine}
+              onSuperEnhance={handleSuperEnhance}
             />
           </main>
         </div>

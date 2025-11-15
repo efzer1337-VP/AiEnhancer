@@ -82,47 +82,20 @@ export interface EnhancedPrompt {
 }
 
 
-// --- ENHANCED VIDEO PROMPT TYPES (VEO META-FRAMEWORK) ---
-
-interface MultiPromptConcept {
-  concept: string; // e.g., "cat", "astronaut"
-  weight: number; // e.g., 2, 1
-}
+// --- ENHANCED VIDEO PROMPT TYPES (VEO SHOT BRIEF) ---
 
 export interface EnhancedVideoPrompt {
-  prompt_type: string; // e.g., "[SCENE]"
-  style: {
-    primary_style: string; // e.g., "Cinematic"
-    secondary_style: string; // e.g., "8K RAW photo"
-    artistic_influence: string; // e.g., "in the style of Wes Anderson"
-    color_palette: string; // e.g., "Vibrant neon colors", "Monochromatic"
-  };
-  subject: {
-    full_description: string; // The complete subject string with weighting, e.g., "a majestic ((lion)) with a golden mane"
-    multi_prompts: MultiPromptConcept[]; // For blending concepts, e.g., [{ concept: 'cat', weight: 2 }, { concept: 'astronaut', weight: 1 }]
-  };
-  action: string;
+  description: string;
+  style: string;
+  camera: string;
+  lighting: string;
   environment: string;
-  composition: {
-    shot_type: string; // e.g., "Wide Angle Shot", "Close-up"
-    camera_angle: string; // e.g., "Low angle", "Aerial view"
-    camera_movement: string; // e.g., "Dolly zoom", "Time-lapse"
-  };
-  lighting: {
-    style: string; // e.g., "Cinematic Lighting", "Golden Hour"
-    effect: string; // e.g., "Volumetric rays", "Lens flare"
-  };
-  parameters: {
-    aspect_ratio: string; // e.g., "16:9"
-    negative_prompt: string; // e.g., "blurry, grainy, watermark"
-    seed: number | null;
-    stylize: number | null; // --s
-    chaos: number | null; // --c
-    quality: string | null; // --q, e.g., "0.5", "1"
-    weird: number | null; // --weird
-    tile: boolean; // --tile
-  };
-  final_prompt: string;
+  elements: string[];
+  motion: string;
+  ending: string;
+  text: string;
+  audio: string;
+  keywords: string[];
 }
 
 
@@ -178,6 +151,7 @@ export interface HistoryItemVideo extends HistoryItemBase {
   model: VideoModel;
   output: EnhancedVideoPrompt;
   firstFrame: string;
+  lastFrame?: string | null;
 }
 
 export interface HistoryItemEdit extends HistoryItemBase {

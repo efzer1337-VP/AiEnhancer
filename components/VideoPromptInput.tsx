@@ -1,5 +1,7 @@
+
 import React, { useRef, useState } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
+import { ImageIcon } from './icons/ImageIcon';
 import type { VideoModel } from '../types';
 
 interface VideoPromptInputProps {
@@ -9,6 +11,8 @@ interface VideoPromptInputProps {
   setLanguage: (language: 'en' | 'ru') => void;
   firstFrame: string | null;
   setFirstFrame: (frame: string | null) => void;
+  lastFrame: string | null;
+  setLastFrame: (frame: string | null) => void;
   videoModel: VideoModel;
   setVideoModel: (model: VideoModel) => void;
   enhancementPower: number;
@@ -31,20 +35,12 @@ const powerLabels: { [key: number]: string } = {
   5: 'Max Creative',
 };
 
-export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
-  prompt,
-  setPrompt,
-  language,
-  setLanguage,
-  firstFrame,
-  setFirstFrame,
-  videoModel,
-  setVideoModel,
-  enhancementPower,
-  setEnhancementPower,
-  onGenerate,
-  isLoading,
-}) => {
+const VideoImageDropzone: React.FC<{
+  title: string;
+  image: string | null;
+  setImage: (image: string | null) => void;
+  isLoading: boolean;
+}> = ({ title, image, setImage, isLoading }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
@@ -53,12 +49,12 @@ export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
       const file = files[0];
       const reader = new FileReader();
       reader.onload = (e) => {
-        setFirstFrame(e.target?.result as string);
+        setImage(e.target?.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
-  
+
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -77,34 +73,93 @@ export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
       handleFileChange(e.dataTransfer.files);
     }
   };
+  
+  const handleRemoveImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setImage(null);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
+
+
+  return (
+    <div
+      className={`relative w-full border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors flex flex-col justify-center items-center h-28 ${dragActive ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600 hover:border-blue-500'}`}
+      onClick={() => fileInputRef.current?.click()}
+      onDragEnter={handleDrag}
+      onDragOver={handleDrag}
+      onDragLeave={handleDrag}
+      onDrop={handleDrop}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => handleFileChange(e.target.files)}
+        disabled={isLoading}
+      />
+      {image ? (
+        <>
+          <img src={image} alt={`${title} preview`} className="max-h-full max-w-full object-contain rounded-md" />
+          <button
+            onClick={handleRemoveImage}
+            className="absolute top-1 right-1 bg-gray-900/70 hover:bg-red-600/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold transition-all transform hover:scale-110 focus:outline-none z-10"
+            aria-label={`Remove ${title}`}
+          >
+            &times;
+          </button>
+        </>
+      ) : (
+         <div className="flex flex-col items-center justify-center h-full text-gray-400">
+          <ImageIcon className="w-6 h-6 mb-1" />
+          <p className="font-semibold text-gray-300 text-sm">{title}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
+  prompt,
+  setPrompt,
+  language,
+  setLanguage,
+  firstFrame,
+  setFirstFrame,
+  lastFrame,
+  setLastFrame,
+  videoModel,
+  setVideoModel,
+  enhancementPower,
+  setEnhancementPower,
+  onGenerate,
+  isLoading,
+}) => {
+  const isGenerateDisabled = isLoading || !firstFrame || (!lastFrame && !prompt.trim());
+  const placeholderText = firstFrame && lastFrame
+    ? (language === 'en' ? 'Optionally, describe the transition...' : 'Опционально, опишите переход...')
+    : (language === 'en' ? 'e.g., a car driving through a neon city at night' : 'например, машина едет по ночному неоновому городу');
+
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6 shadow-2xl flex flex-col gap-4 h-full">
       <h2 className="text-2xl font-semibold text-gray-100">Your Video Idea</h2>
 
-      <div 
-        className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${dragActive ? 'border-blue-500 bg-blue-900/30' : 'border-gray-600 hover:border-blue-500'}`}
-        onClick={() => fileInputRef.current?.click()}
-        onDragEnter={handleDrag}
-        onDragOver={handleDrag}
-        onDragLeave={handleDrag}
-        onDrop={handleDrop}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => handleFileChange(e.target.files)}
-          disabled={isLoading}
+      <div className="grid grid-cols-2 gap-4">
+        <VideoImageDropzone 
+          title="First Frame"
+          image={firstFrame}
+          setImage={setFirstFrame}
+          isLoading={isLoading}
         />
-        {firstFrame ? (
-          <img src={firstFrame} alt="First frame preview" className="mx-auto max-h-24 rounded-md" />
-        ) : (
-          <p className="text-gray-400">
-            {dragActive ? 'Drop the image here' : 'Click or drag & drop a "First Frame" image'}
-          </p>
-        )}
+        <VideoImageDropzone 
+          title="Last Frame"
+          image={lastFrame}
+          setImage={setLastFrame}
+          isLoading={isLoading}
+        />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -160,14 +215,14 @@ export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
       <textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        placeholder={language === 'en' ? 'e.g., a car driving through a neon city at night' : 'например, машина едет по ночному неоновому городу'}
+        placeholder={placeholderText}
         className="w-full flex-grow p-4 bg-gray-900 border border-gray-600 rounded-lg text-lg text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none transition-colors"
         disabled={isLoading}
       />
 
       <button
         onClick={onGenerate}
-        disabled={isLoading || !prompt.trim() || !firstFrame}
+        disabled={isGenerateDisabled}
         className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 disabled:transform-none"
       >
         {isLoading ? (
