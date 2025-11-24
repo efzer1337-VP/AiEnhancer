@@ -8,41 +8,54 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ mode, setMode }) => {
-  const navButtonClasses = "px-4 py-2 rounded-lg font-semibold transition-colors duration-300 flex-1";
-  const activeClasses = "bg-blue-600 text-white";
-  const inactiveClasses = "bg-gray-700/50 hover:bg-gray-600/80 text-gray-300";
+  const modes: { id: AppMode; label: string }[] = [
+    { id: 'image', label: 'Image Gen' },
+    { id: 'video', label: 'Video Gen' },
+    { id: 'edit', label: 'Image Edit' },
+  ];
 
   return (
-    <header className="text-center">
-      <div className="flex items-center justify-center gap-4">
-        <SparklesIcon className="w-10 h-10 text-cyan-400" />
-        <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">
-          AI Prompt Enhancer
-        </h1>
+    <header className="flex flex-col md:flex-row items-center justify-between gap-4 py-2 flex-shrink-0">
+      {/* Logo / Brand */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-700 shadow-[0_0_15px_rgba(99,102,241,0.4)] text-white border border-indigo-500/30">
+            <SparklesIcon className="w-5 h-5" />
+        </div>
+        <div className="flex flex-col">
+            <h1 className="text-base font-bold text-slate-100 tracking-tight leading-none">
+            Prompt<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">Enhancer</span>
+            </h1>
+            <span className="text-[10px] text-slate-500 font-mono mt-0.5">Gemini 3.0 Pro</span>
+        </div>
       </div>
-      <p className="mt-4 text-lg text-gray-300">
-        Transform your simple ideas into detailed, powerful prompts for AI generation.
-      </p>
-      <nav className="mt-6 flex justify-center items-center gap-2 bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-2 max-w-md mx-auto">
-        <button
-          onClick={() => setMode('image')}
-          className={`${navButtonClasses} ${mode === 'image' ? activeClasses : inactiveClasses}`}
-        >
-          Image
-        </button>
-        <button
-          onClick={() => setMode('video')}
-          className={`${navButtonClasses} ${mode === 'video' ? activeClasses : inactiveClasses}`}
-        >
-          Video
-        </button>
-        <button
-          onClick={() => setMode('edit')}
-          className={`${navButtonClasses} ${mode === 'edit' ? activeClasses : inactiveClasses}`}
-        >
-          Edit
-        </button>
+
+      {/* Center Navigation - Segmented Control Look */}
+      <nav className="bg-[#13151C] border border-white/10 rounded-full p-1 flex items-center shadow-lg shadow-black/20">
+        {modes.map((m) => (
+            <button
+                key={m.id}
+                onClick={() => setMode(m.id)}
+                className={`relative px-6 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 z-10 ${
+                    mode === m.id 
+                    ? 'text-white shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+            >
+                {m.label}
+                {mode === m.id && (
+                    <span className="absolute inset-0 bg-[#272A35] border border-white/10 rounded-full -z-10 shadow-[0_2px_8px_rgba(0,0,0,0.4)]" />
+                )}
+            </button>
+        ))}
       </nav>
+      
+      {/* Right Side - Actions or Status */}
+      <div className="hidden md:flex items-center gap-3">
+         <div className="px-3 py-1 rounded-full bg-emerald-500/5 border border-emerald-500/20 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
+            <span className="text-[10px] font-mono font-medium text-emerald-400">System Active</span>
+         </div>
+      </div>
     </header>
   );
 };

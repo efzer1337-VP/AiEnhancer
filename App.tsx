@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Header } from './components/Header';
 import { PromptInput } from './components/PromptInput';
@@ -176,7 +175,6 @@ const App: React.FC = () => {
         setEditOutput(newOutput);
       }
       
-      // Update history if an item was being refined
       if (activeHistoryId && newOutput) {
         setHistory(prev => prev.map(item => {
           if (item.id === activeHistoryId) {
@@ -339,32 +337,48 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-blue-900/50 font-sans">
-      <div className="container mx-auto px-4 py-8">
-        <Header mode={mode} setMode={setMode} />
-        <div className="mt-8 grid grid-cols-1 xl:grid-cols-[350px_1fr] gap-8">
-          <HistorySidebar
-            history={history}
-            activeId={activeHistoryId}
-            onSelect={handleSelectHistory}
-            onClear={handleClearHistory}
-          />
-          <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {renderInput()}
-            <OutputDisplay
-              output={currentOutput}
-              isLoading={isLoading}
-              isRefining={isRefining}
-              isSuperEnhancing={isSuperEnhancing}
-              error={error}
-              viewMode={viewMode}
-              setViewMode={setViewMode}
-              onRefine={handleRefine}
-              onSuperEnhance={handleSuperEnhance}
-            />
-          </main>
+    <div className="min-h-screen font-sans text-slate-300 bg-[#02040a] relative overflow-hidden selection:bg-indigo-500/30">
+        {/* Sophisticated Ambient Light - Increased opacity slightly for separation */}
+        <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-900/15 rounded-full blur-[150px] pointer-events-none mix-blend-screen" />
+        <div className="fixed top-[20%] right-[-10%] w-[40%] h-[60%] bg-violet-900/15 rounded-full blur-[180px] pointer-events-none mix-blend-screen" />
+        <div className="fixed bottom-[-20%] left-[20%] w-[60%] h-[50%] bg-cyan-900/10 rounded-full blur-[150px] pointer-events-none mix-blend-screen" />
+        
+        {/* Main Content Container */}
+        <div className="relative z-10 max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6 h-screen flex flex-col">
+            <Header mode={mode} setMode={setMode} />
+            
+            <div className="mt-6 flex-grow grid grid-cols-1 lg:grid-cols-[260px_1fr_1fr] xl:grid-cols-[300px_minmax(500px,1fr)_minmax(500px,1fr)] gap-6 h-full min-h-0">
+                {/* History - Hidden on mobile, visible on LG+ */}
+                <div className="hidden lg:block h-full min-h-0">
+                   <HistorySidebar
+                        history={history}
+                        activeId={activeHistoryId}
+                        onSelect={handleSelectHistory}
+                        onClear={handleClearHistory}
+                    />
+                </div>
+
+                {/* Input Panel */}
+                <div className="flex flex-col h-full min-h-0">
+                    {renderInput()}
+                </div>
+
+                {/* Output Panel */}
+                <div className="flex flex-col h-full min-h-0">
+                    <OutputDisplay
+                        output={currentOutput}
+                        isLoading={isLoading}
+                        isRefining={isRefining}
+                        isSuperEnhancing={isSuperEnhancing}
+                        error={error}
+                        viewMode={viewMode}
+                        setViewMode={setViewMode}
+                        onRefine={handleRefine}
+                        onSuperEnhance={handleSuperEnhance}
+                    />
+                </div>
+            </div>
         </div>
-      </div>
     </div>
   );
 };

@@ -218,7 +218,7 @@ export const generateEnhancedPrompt = async (
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-pro-preview",
       contents: finalContents,
       config: {
         systemInstruction: systemInstructionText,
@@ -255,7 +255,7 @@ export const refineEnhancedPrompt = async (
     const systemInstruction = `You are an AI assistant that refines detailed JSON prompts for the **${targetModelName}** image generator. You will be given a JSON object representing the current prompt and a user's request for modification. Your task is to apply the modification and return a new, valid JSON object that strictly adheres to the original schema. Do not add any explanatory text, just output the modified JSON. Ensure the refinement logically integrates with the existing prompt details.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-pro-preview",
       contents: `Here is the current JSON prompt: ${JSON.stringify(currentPrompt)}. Here is the user's request: "${refinementRequest}".`,
       config: {
         systemInstruction,
@@ -295,7 +295,7 @@ export const superEnhanceImagePrompt = async (
 4.  **Return JSON:** Your output must be ONLY the new, more detailed JSON object, strictly adhering to the original schema. Do not add any extra text or explanations.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro", // Using a more powerful model for enhancement
+      model: "gemini-3-pro-preview", // Using a more powerful model for enhancement
       contents: `Here is the current JSON prompt. Enhance it: ${JSON.stringify(currentPrompt, null, 2)}`,
       config: {
         systemInstruction,
@@ -418,7 +418,7 @@ Based on your analysis and the user's text prompt, populate the JSON brief. The 
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-pro-preview",
       contents: { parts: partsForApi },
       config: {
         systemInstruction,
@@ -459,7 +459,7 @@ export const refineEnhancedVideoPrompt = async (
 3.  Return the new, valid JSON object that strictly adheres to the original schema. Do not add any explanatory text, just the JSON.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-pro-preview",
       contents: `Here is the current JSON prompt: ${JSON.stringify(currentPrompt)}. Here is the user's request: "${refinementRequest}".`,
       config: {
         systemInstruction,
@@ -498,7 +498,7 @@ export const superEnhanceVideoPrompt = async (
 4.  **Return JSON:** Your output must be ONLY the new, more detailed JSON object, strictly adhering to the original schema. Do not add any extra text or explanations.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
+      model: "gemini-3-pro-preview",
       contents: `Here is the current JSON brief. Enhance it: ${JSON.stringify(currentPrompt, null, 2)}`,
       config: {
         systemInstruction,
@@ -609,7 +609,7 @@ The final output must be a JSON object in English that strictly follows the prov
     };
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-pro-preview",
       contents: { parts: [imagePart, textPart] },
       config: {
         systemInstruction,
@@ -628,7 +628,6 @@ The final output must be a JSON object in English that strictly follows the prov
   }
 };
 
-// FIX: This function was incomplete and caused a compile error. It has been implemented to refine an existing edit prompt.
 export const refineEnhancedEditPrompt = async (
   currentPrompt: EnhancedEditPrompt,
   refinementRequest: string,
@@ -644,7 +643,7 @@ export const refineEnhancedEditPrompt = async (
     const systemInstruction = `You are an AI assistant that refines detailed JSON prompts for the **${targetModelName}** image editing model. You will be given a JSON object representing the current edit prompt and a user's request for modification. Your task is to apply the modification and return a new, valid JSON object that strictly adheres to the original schema. The 'master_prompt' should be a concise, direct command for the edit. Do not add any explanatory text, just output the modified JSON.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-pro-preview",
       contents: `Here is the current JSON prompt: ${JSON.stringify(currentPrompt)}. Here is the user's request: "${refinementRequest}".`,
       config: {
         systemInstruction,

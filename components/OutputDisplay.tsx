@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode } from '../types';
 import { CodeIcon } from './icons/CodeIcon';
@@ -21,24 +20,24 @@ interface OutputDisplayProps {
   onSuperEnhance: () => void;
 }
 
-// Type guards to differentiate between prompt types
+// Type guards
 const isImagePrompt = (o: any): o is EnhancedPrompt => o && o.prompt && 'core' in o.prompt;
 const isVideoPrompt = (o: any): o is EnhancedVideoPrompt => o && 'description' in o && 'keywords' in o && 'camera' in o;
 const isEditPrompt = (o: any): o is EnhancedEditPrompt => o && 'master_prompt' in o;
 
-// Helper component for collapsible sections
+// Helper for collapsible sections
 const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div className="border-b border-gray-700 last:border-b-0">
+    <div className="border-b border-white/10 last:border-b-0 bg-[#0B0D12]">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center py-3 px-4 text-left font-semibold text-gray-200 hover:bg-gray-700/50 transition-colors"
+        className="w-full flex justify-between items-center py-3 px-4 text-left font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.02] transition-colors"
         aria-expanded={isOpen}
       >
-        <span>{title}</span>
+        <span className="text-[11px] uppercase tracking-widest opacity-90 font-semibold">{title}</span>
         <svg
-          className={`w-5 h-5 transition-transform transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 transition-transform transform duration-200 ${isOpen ? 'rotate-180' : ''} opacity-50`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -46,7 +45,7 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode; d
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {isOpen && <div className="p-4 bg-gray-900/50">{children}</div>}
+      {isOpen && <div className="p-4 bg-[#090a0e] animate-in fade-in slide-in-from-top-1 duration-200 border-t border-white/5">{children}</div>}
     </div>
   );
 };
@@ -55,14 +54,18 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode; d
 const Detail: React.FC<{ label: string; value: string | string[] | number | null | undefined }> = ({ label, value }) => {
     if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) return null;
     return (
-      <div className="mb-3">
-        <strong className="text-gray-400 block font-medium">{label}:</strong>
+      <div className="mb-3 last:mb-0 font-mono text-[13px] leading-relaxed">
+        <span className="text-indigo-400 mr-2 font-medium">{label}:</span>
         {Array.isArray(value) ? (
-          <ul className="list-disc list-inside ml-2 text-cyan-300 space-y-1 mt-1">
-            {value.map((item, index) => <li key={index} className="text-gray-200">{item}</li>)}
-          </ul>
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {value.map((item, index) => (
+                <span key={index} className="inline-block px-2 py-0.5 rounded bg-white/[0.07] text-slate-300 text-[11px] border border-white/[0.08]">
+                    {item}
+                </span>
+            ))}
+          </div>
         ) : (
-          <span className="text-gray-200 whitespace-pre-wrap">{value}</span>
+          <span className="text-slate-300 whitespace-pre-wrap">{value}</span>
         )}
       </div>
     );
@@ -82,30 +85,28 @@ const RefineInput: React.FC<{onRefine: (p: string) => void, isRefining: boolean}
     };
     
     return (
-        <div className="p-4 border-b border-gray-700 bg-gray-800/30">
-            <form onSubmit={handleSubmit} className="flex items-center gap-3">
-                <input
-                    type="text"
-                    value={refinement}
-                    onChange={(e) => setRefinement(e.target.value)}
-                    placeholder="Refine the prompt... e.g., 'make it a night scene'"
-                    className="w-full p-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
-                    disabled={isRefining}
-                    aria-label="Refinement input"
-                />
+        <div className="p-3 border-b border-white/10 bg-[#0B0D12]">
+            <form onSubmit={handleSubmit} className="flex items-center gap-2">
+                <div className="relative flex-grow">
+                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-indigo-500 text-xs font-mono">{'>'}</span>
+                    <input
+                        type="text"
+                        value={refinement}
+                        onChange={(e) => setRefinement(e.target.value)}
+                        placeholder="Refine prompt (e.g., 'make it darker', 'add rain')..."
+                        className="w-full pl-7 pr-4 py-2 bg-[#090a0e] border border-white/10 rounded-md text-sm text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-colors font-mono"
+                        disabled={isRefining}
+                    />
+                </div>
                 <button
                     type="submit"
                     disabled={isRefining || !refinement.trim()}
-                    className="p-2.5 bg-blue-600 rounded-lg text-white hover:bg-blue-500 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-                    aria-label="Refine prompt"
+                    className="p-2 bg-indigo-600 rounded-md text-white hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed transition-colors flex-shrink-0 border border-transparent disabled:border-white/5"
                 >
                    {isRefining ? (
-                       <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                       </svg>
+                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                    ) : (
-                       <SendIcon className="w-5 h-5" />
+                       <SendIcon className="w-4 h-4" />
                    )}
                 </button>
             </form>
@@ -135,7 +136,6 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
   });
   
   useEffect(() => {
-    // Reset checkboxes when a new output is generated
     if (output) {
       setSelectedSections({
         core: true,
@@ -199,100 +199,104 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
     const fullPrompt = promptParts.filter(p => p && p.trim() !== '').join(' ');
 
     const sections: { key: ImagePromptSection; label: string }[] = [
-        { key: 'core', label: 'Core Details' },
+        { key: 'core', label: 'Core' },
         { key: 'style', label: 'Style' },
-        { key: 'technical', label: 'Technical Details' },
-        { key: 'scene_setup', label: 'Scene Setup' },
-        { key: 'modifications', label: 'Modifications' },
-        { key: 'quality', label: 'Quality Keywords' },
+        { key: 'technical', label: 'Tech' },
+        { key: 'scene_setup', label: 'Scene' },
+        { key: 'modifications', label: 'Mods' },
+        { key: 'quality', label: 'Quality' },
     ];
 
     return (
       <div>
           <RefineInput onRefine={onRefine} isRefining={isRefining} />
-          <div className="border-b border-gray-700">
-            <h3 className="w-full flex justify-between items-center py-3 px-4 text-left font-semibold text-gray-200">
-                <span>Customize Prompt Output</span>
+          
+          <div className="border-b border-white/10 bg-[#0B0D12]">
+            <h3 className="w-full py-3 px-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Composition
             </h3>
-            <div className="p-4 bg-gray-900/50">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="px-4 pb-4 pt-1">
+                <div className="flex flex-wrap gap-2">
                     {sections.map(({ key, label }) => (
-                        <label key={key} className="flex items-center space-x-2 text-gray-300 cursor-pointer text-sm">
-                            <input
-                                type="checkbox"
-                                checked={!!selectedSections[key]}
-                                onChange={() => handleSectionToggle(key)}
-                                className="h-4 w-4 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-blue-500 focus:ring-offset-gray-900 focus:ring-offset-0"
-                            />
-                            <span>{label}</span>
-                        </label>
+                        <button
+                            key={key}
+                            onClick={() => handleSectionToggle(key)}
+                            className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded border transition-all ${
+                                selectedSections[key]
+                                ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
+                                : 'bg-white/5 border-white/5 text-slate-500 hover:text-slate-300 hover:border-white/10'
+                            }`}
+                        >
+                            {label}
+                        </button>
                     ))}
                 </div>
             </div>
           </div>
 
-          <CollapsibleSection title="Full Generated Prompt" defaultOpen={true}>
-            <div className="relative">
+          <CollapsibleSection title="Final Prompt Output" defaultOpen={true}>
+            <div className="relative group">
               <button
                 onClick={() => handleCopy(fullPrompt, 'image-full')}
-                className="absolute top-2 right-2 p-1.5 bg-gray-700/80 hover:bg-gray-600 rounded-md text-gray-300 hover:text-white transition-colors z-10"
+                className="absolute top-0 right-0 p-1.5 bg-zinc-800 rounded border border-zinc-700 text-slate-400 hover:text-white transition-all z-10 opacity-0 group-hover:opacity-100 shadow-sm"
                 aria-label="Copy prompt"
               >
                 {copiedKey === 'image-full' ? (
-                  <CheckIcon className="w-4 h-4 text-green-400" />
+                  <CheckIcon className="w-3 h-3 text-green-400" />
                 ) : (
-                  <ClipboardIcon className="w-4 h-4" />
+                  <ClipboardIcon className="w-3 h-3" />
                 )}
               </button>
-              <p className="text-gray-300 bg-gray-900 p-3 rounded-md font-mono text-sm whitespace-pre-wrap">{fullPrompt}</p>
+              <p className="text-slate-300 font-mono text-sm leading-relaxed">{fullPrompt}</p>
             </div>
           </CollapsibleSection>
 
-          <CollapsibleSection title="Core Details">
+          <CollapsibleSection title="Core Data">
               <Detail label="Subject" value={core.subject} />
               <Detail label="Concept" value={core.concept} />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Style">
+          <CollapsibleSection title="Style Matrix">
               <Detail label="Primary" value={style.primary} />
               <Detail label="Secondary" value={style.secondary} />
               <Detail label="Mood" value={style.mood} />
-              <Detail label="Artistic Influence" value={style.artistic_influence} />
+              <Detail label="Influence" value={style.artistic_influence} />
           </CollapsibleSection>
           
-          <CollapsibleSection title="Technical Details">
-               <Detail label="Shot Type" value={technical.camera.shot_type} />
+          <CollapsibleSection title="Technical Specs">
+               <Detail label="Shot" value={technical.camera.shot_type} />
                <Detail label="Angle" value={technical.camera.angle} />
                <Detail label="Lens" value={technical.camera.lens} />
                <Detail label="Focus" value={technical.camera.focus} />
-               <Detail label="Lighting Source" value={technical.lighting.source} />
-               <Detail label="Lighting Effect" value={technical.lighting.effect} />
+               <Detail label="Light Src" value={technical.lighting.source} />
+               <Detail label="Light FX" value={technical.lighting.effect} />
                <Detail label="Quality" value={technical.resolution.quality} />
                <Detail label="Texture" value={technical.resolution.texture} />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Scene Setup">
+          <CollapsibleSection title="Environment">
                <Detail label="Surface" value={scene_setup.surface} />
-               <Detail label="Background Type" value={scene_setup.background.type} />
-               <Detail label="Background Description" value={scene_setup.background.description} />
-               <Detail label="Background Color" value={scene_setup.background.color} />
+               <Detail label="Bg Type" value={scene_setup.background.type} />
+               <Detail label="Bg Desc" value={scene_setup.background.description} />
+               <Detail label="Bg Color" value={scene_setup.background.color} />
                <Detail label="Props" value={scene_setup.props} />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Modifications">
-            {modifications.map((mod, i) => (
-               <div key={i} className="mb-4 p-3 border-l-2 border-cyan-500 bg-gray-800/40 rounded-r-md">
-                  <Detail label="Target Area" value={mod.target_area} />
-                  <Detail label="Action" value={mod.action} />
-                  <Detail label="Materials" value={mod.details.materials} />
-                  <Detail label="Architectural Translation" value={mod.details.architectural_translation} />
-               </div>
-            ))}
-          </CollapsibleSection>
+          {modifications.length > 0 && (
+              <CollapsibleSection title="Modifications">
+                {modifications.map((mod, i) => (
+                <div key={i} className="mb-4 p-3 border-l-2 border-indigo-500 bg-white/[0.03] rounded-r">
+                    <Detail label="Target" value={mod.target_area} />
+                    <Detail label="Action" value={mod.action} />
+                    <Detail label="Material" value={mod.details.materials} />
+                </div>
+                ))}
+              </CollapsibleSection>
+          )}
 
-          <CollapsibleSection title="Quality">
-               <Detail label="Positive Keywords" value={quality.positive_keywords} />
-               <Detail label="Negative Prompt" value={quality.negative_prompt} />
+          <CollapsibleSection title="Quality Tokens">
+               <Detail label="Positive" value={quality.positive_keywords} />
+               <Detail label="Negative" value={quality.negative_prompt} />
           </CollapsibleSection>
       </div>
     );
@@ -303,27 +307,25 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
     <div>
       <RefineInput onRefine={onRefine} isRefining={isRefining} />
       
-      <CollapsibleSection title="Cinematic Description" defaultOpen={true}>
-        <div className="p-1">
-          <p className="text-gray-200 whitespace-pre-wrap">{data.description}</p>
-        </div>
+      <CollapsibleSection title="Cinematic Brief" defaultOpen={true}>
+        <p className="text-slate-300 font-mono text-sm leading-relaxed">{data.description}</p>
       </CollapsibleSection>
 
-      <CollapsibleSection title="Shot Details" defaultOpen={true}>
+      <CollapsibleSection title="Shot Specs" defaultOpen={true}>
         <Detail label="Style" value={data.style} />
         <Detail label="Camera" value={data.camera} />
         <Detail label="Lighting" value={data.lighting} />
-        <Detail label="Environment" value={data.environment} />
+        <Detail label="Env" value={data.environment} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Scene Elements & Motion">
-        <Detail label="Key Elements" value={data.elements} />
+      <CollapsibleSection title="Action & Motion">
+        <Detail label="Elements" value={data.elements} />
         <Detail label="Motion" value={data.motion} />
         <Detail label="Ending" value={data.ending} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Metadata">
-        <Detail label="Text / Tagline" value={data.text} />
+      <CollapsibleSection title="Audio & Meta">
+        <Detail label="Text" value={data.text} />
         <Detail label="Audio" value={data.audio} />
         <Detail label="Keywords" value={data.keywords} />
       </CollapsibleSection>
@@ -333,40 +335,40 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
   const renderEditView = (data: EnhancedEditPrompt) => (
     <div>
        <RefineInput onRefine={onRefine} isRefining={isRefining} />
-       <CollapsibleSection title="Master Edit Prompt" defaultOpen={true}>
-        <div className="relative">
+       <CollapsibleSection title="Master Edit Command" defaultOpen={true}>
+        <div className="relative group">
           <button
             onClick={() => handleCopy(data.master_prompt, 'edit-master')}
-            className="absolute top-2 right-2 p-1.5 bg-gray-700/80 hover:bg-gray-600 rounded-md text-gray-300 hover:text-white transition-colors z-10"
+            className="absolute top-0 right-0 p-1.5 bg-zinc-800 rounded border border-zinc-700 text-slate-400 hover:text-white transition-all z-10 opacity-0 group-hover:opacity-100 shadow-sm"
             aria-label="Copy prompt"
           >
             {copiedKey === 'edit-master' ? (
-              <CheckIcon className="w-4 h-4 text-green-400" />
+              <CheckIcon className="w-3 h-3 text-green-400" />
             ) : (
-              <ClipboardIcon className="w-4 h-4" />
+              <ClipboardIcon className="w-3 h-3" />
             )}
           </button>
-          <p className="text-gray-300 bg-gray-900 p-3 rounded-md font-mono text-sm whitespace-pre-wrap">{data.master_prompt}</p>
+          <p className="text-slate-300 font-mono text-sm">{data.master_prompt}</p>
         </div>
       </CollapsibleSection>
-      <CollapsibleSection title="Original Image Analysis">
+      <CollapsibleSection title="Analysis">
         <Detail label="Style" value={data.original_image_analysis.style} />
         <Detail label="Lighting" value={data.original_image_analysis.lighting} />
         <Detail label="Subject" value={data.original_image_analysis.subject} />
-        <Detail label="Composition" value={data.original_image_analysis.composition} />
+        <Detail label="Comp" value={data.original_image_analysis.composition} />
       </CollapsibleSection>
-      <CollapsibleSection title="Requested Changes">
+      <CollapsibleSection title="Changes">
         {data.requested_changes.map((change, i) => (
-          <div key={i} className="mb-3 p-3 border-l-2 border-cyan-500 bg-gray-800/40 rounded-r-md">
-            <Detail label="Target Area" value={change.target_area} />
+          <div key={i} className="mb-3 p-3 border-l-2 border-indigo-500 bg-white/[0.03] rounded-r">
+            <Detail label="Target" value={change.target_area} />
             <Detail label="Action" value={change.action} />
-            <Detail label="Detailed Instruction" value={change.detailed_instruction} />
+            <Detail label="Detail" value={change.detailed_instruction} />
           </div>
         ))}
       </CollapsibleSection>
-       <CollapsibleSection title="Consistency Keywords">
-        <Detail label="Positive Keywords" value={data.consistency_keywords.positive} />
-        <Detail label="Negative Keywords" value={data.consistency_keywords.negative} />
+       <CollapsibleSection title="Consistency">
+        <Detail label="Keep" value={data.consistency_keywords.positive} />
+        <Detail label="Avoid" value={data.consistency_keywords.negative} />
       </CollapsibleSection>
     </div>
   );
@@ -374,30 +376,32 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
   const renderContent = () => {
     if (isLoading) {
       return (
-        <div className="flex flex-col items-center justify-center h-full p-8 text-gray-400">
-          <svg className="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <p className="mt-4 text-lg">Generating enhanced prompt...</p>
+        <div className="flex flex-col items-center justify-center h-full p-12 text-slate-500 font-mono text-sm">
+          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="animate-pulse text-slate-400">Processing Neural Data...</p>
         </div>
       );
     }
 
     if (error) {
       return (
-        <div className="p-8 text-center">
-          <p className="text-red-400 text-lg font-semibold">An error occurred:</p>
-          <p className="mt-2 text-gray-300 bg-red-900/50 p-4 rounded-md">{error}</p>
+        <div className="p-6 flex items-center justify-center h-full">
+          <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg max-w-md text-center shadow-lg shadow-red-900/20">
+            <p className="text-red-400 text-sm font-medium font-mono">System Error</p>
+            <p className="mt-2 text-slate-400 text-xs">{error}</p>
+          </div>
         </div>
       );
     }
 
     if (!output) {
       return (
-        <div className="flex flex-col items-center justify-center h-full p-8 text-gray-500">
-          <p className="text-xl">Your enhanced prompt will appear here.</p>
-          <p>Enter an idea and click "Enhance" to begin.</p>
+        <div className="flex flex-col items-center justify-center h-full p-12 text-slate-600 font-mono">
+          <div className="bg-white/[0.03] p-4 rounded-full mb-4 border border-white/[0.05]">
+            <CodeIcon className="w-6 h-6 opacity-40" />
+          </div>
+          <p className="text-sm tracking-wide text-slate-500">Awaiting Input Stream</p>
+          <p className="text-xs mt-2 opacity-40">Output will render here</p>
         </div>
       );
     }
@@ -405,94 +409,76 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
     if (viewMode === 'json') {
       const jsonString = JSON.stringify(output, null, 2);
       return (
-        <div className="p-1 relative">
+        <div className="relative h-full bg-[#090a0e]">
            <button
             onClick={() => handleCopy(jsonString, 'json-full')}
-            className="absolute top-3 right-3 p-1.5 bg-gray-700/80 hover:bg-gray-600 rounded-md text-gray-300 hover:text-white transition-colors z-10"
+            className="absolute top-4 right-4 p-1.5 bg-zinc-800 rounded border border-zinc-700 text-slate-400 hover:text-white transition-all z-10 shadow-sm"
             aria-label="Copy JSON"
           >
             {copiedKey === 'json-full' ? (
-              <CheckIcon className="w-4 h-4 text-green-400" />
+              <CheckIcon className="w-3 h-3 text-green-400" />
             ) : (
-              <ClipboardIcon className="w-4 h-4" />
+              <ClipboardIcon className="w-3 h-3" />
             )}
           </button>
-          <pre className="p-4 text-sm text-cyan-200 bg-gray-900/80 rounded-lg overflow-x-auto">
+          <pre className="p-6 text-xs text-indigo-200 font-mono overflow-x-auto h-full custom-scrollbar">
             {jsonString}
           </pre>
         </div>
       );
     }
     
-    if (isImagePrompt(output)) {
-      return renderImageView(output);
-    }
-    
-    if (isVideoPrompt(output)) {
-      return renderVideoView(output);
-    }
+    if (isImagePrompt(output)) return renderImageView(output);
+    if (isVideoPrompt(output)) return renderVideoView(output);
+    if (isEditPrompt(output)) return renderEditView(output);
 
-    if (isEditPrompt(output)) {
-      return renderEditView(output);
-    }
-
-    return <p className="p-4 text-red-500">Could not determine prompt type.</p>;
+    return <p className="p-4 text-red-500 font-mono text-xs">Unknown data format.</p>;
   };
 
-  const buttonBaseClasses = "px-3 py-1.5 rounded-md text-sm font-semibold flex items-center gap-2 transition-colors duration-200";
-  const activeClasses = "bg-blue-600 text-white";
-  const inactiveClasses = "bg-gray-700 hover:bg-gray-600/80 text-gray-300";
-
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl flex flex-col h-full">
-      <div className="flex justify-between items-center p-4 border-b border-gray-700 flex-wrap gap-2">
-        <h2 className="text-2xl font-semibold text-gray-100">Enhanced Prompt</h2>
+    <div className="bg-[#13151C]/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col h-full overflow-hidden ring-1 ring-white/5">
+      <div className="flex justify-between items-center px-4 py-3 border-b border-white/10 bg-[#0B0D12]">
+        <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>
+           Output Terminal
+        </h2>
+        
         {output && !isLoading && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
                {(isImagePrompt(output) || isVideoPrompt(output)) && viewMode === 'text' && (
                   <button
                     onClick={onSuperEnhance}
                     disabled={isSuperEnhancing || isRefining}
-                    className="px-3 py-1.5 rounded-md text-sm font-semibold flex items-center gap-2 transition-colors duration-200 bg-purple-600 hover:bg-purple-500 text-white disabled:bg-gray-600 disabled:cursor-not-allowed"
+                    className="group px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all duration-200 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSuperEnhancing ? (
-                        <>
-                           <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                           </svg>
-                           <span>Enhancing...</span>
-                        </>
+                        <div className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
                     ) : (
-                        <>
-                           <SparklesIcon className="w-4 h-4" />
-                           <span>Make it even more enhanced</span>
-                        </>
+                        <SparklesIcon className="w-3 h-3" />
                     )}
+                    <span>Super Enhance</span>
                   </button>
                 )}
-                <div className="flex items-center gap-2 bg-gray-900/50 p-1 rounded-lg">
+                <div className="flex items-center bg-black/20 rounded-lg p-0.5 border border-white/10">
                     <button 
                         onClick={() => setViewMode('text')} 
-                        className={`${buttonBaseClasses} ${viewMode === 'text' ? activeClasses : inactiveClasses}`}
-                        aria-pressed={viewMode === 'text'}
+                        className={`px-3 py-1 rounded-md text-[10px] font-medium flex items-center gap-1.5 transition-all ${viewMode === 'text' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
                     >
-                        <TextIcon className="w-4 h-4"/>
-                        <span>Text</span>
+                        <TextIcon className="w-3 h-3"/>
+                        Text
                     </button>
                     <button 
                         onClick={() => setViewMode('json')} 
-                        className={`${buttonBaseClasses} ${viewMode === 'json' ? activeClasses : inactiveClasses}`}
-                        aria-pressed={viewMode === 'json'}
+                        className={`px-3 py-1 rounded-md text-[10px] font-medium flex items-center gap-1.5 transition-all ${viewMode === 'json' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
                     >
-                        <CodeIcon className="w-4 h-4"/>
-                        <span>JSON</span>
+                        <CodeIcon className="w-3 h-3"/>
+                        JSON
                     </button>
                 </div>
             </div>
         )}
       </div>
-      <div className="flex-grow overflow-y-auto">
+      <div className="flex-grow overflow-y-auto custom-scrollbar bg-[#090a0e]">
           {renderContent()}
       </div>
     </div>
