@@ -1,7 +1,9 @@
 
-export type ImageModel = 'midjourney' | 'nanobanana' | 'flux' | 'wan';
-export type VideoModel = 'veo' | 'wan' | 'grok';
-export type EditModel = 'nanobanana' | 'wan';
+export type AppMode = 'image' | 'video' | 'edit';
+export type ImageModel = 'midjourney' | 'nanobanana' | 'flux' | 'z-image';
+export type VideoModel = 'veo' | 'ltx2' | 'grok';
+export type EditModel = 'nanobanana' | 'z-image';
+export type GeminiModelType = 'gemini-3-flash' | 'gemini-3-pro';
 
 // --- NEW ENHANCED IMAGE PROMPT TYPES ---
 
@@ -82,20 +84,12 @@ export interface EnhancedPrompt {
 }
 
 
-// --- ENHANCED VIDEO PROMPT TYPES (VEO SHOT BRIEF) ---
+// --- ENHANCED VIDEO PROMPT TYPES ---
 
 export interface EnhancedVideoPrompt {
-  description: string;
-  style: string;
-  camera: string;
-  lighting: string;
-  environment: string;
-  elements: string[];
-  motion: string;
-  ending: string;
-  text: string;
-  audio: string;
-  keywords: string[];
+  full_prompt: string;
+  audio_description?: string;
+  model_notes?: string;
 }
 
 
@@ -136,6 +130,7 @@ export interface HistoryItemBase {
   simplePrompt: string;
   language: 'en' | 'ru';
   enhancementPower?: number;
+  geminiModel?: GeminiModelType;
 }
 
 export interface HistoryItemImage extends HistoryItemBase {
@@ -150,8 +145,9 @@ export interface HistoryItemVideo extends HistoryItemBase {
   type: 'video';
   model: VideoModel;
   output: EnhancedVideoPrompt;
-  firstFrame: string;
+  firstFrame?: string | null;
   lastFrame?: string | null;
+  characterReferences?: string[];
 }
 
 export interface HistoryItemEdit extends HistoryItemBase {

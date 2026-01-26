@@ -1,13 +1,16 @@
+
 import React from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
-import type { AppMode } from '../App';
+import type { AppMode, GeminiModelType } from '../types';
 
 interface HeaderProps {
   mode: AppMode;
   setMode: (mode: AppMode) => void;
+  geminiModel: GeminiModelType;
+  setGeminiModel: (model: GeminiModelType) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ mode, setMode }) => {
+export const Header: React.FC<HeaderProps> = ({ mode, setMode, geminiModel, setGeminiModel }) => {
   const modes: { id: AppMode; label: string }[] = [
     { id: 'image', label: 'Image Gen' },
     { id: 'video', label: 'Video Gen' },
@@ -25,7 +28,7 @@ export const Header: React.FC<HeaderProps> = ({ mode, setMode }) => {
             <h1 className="text-base font-bold text-slate-100 tracking-tight leading-none">
             Prompt<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">Enhancer</span>
             </h1>
-            <span className="text-[10px] text-slate-500 font-mono mt-0.5">Gemini 3.0 Pro</span>
+            <span className="text-[10px] text-slate-500 font-mono mt-0.5">Generative Suite</span>
         </div>
       </div>
 
@@ -51,9 +54,20 @@ export const Header: React.FC<HeaderProps> = ({ mode, setMode }) => {
       
       {/* Right Side - Actions or Status */}
       <div className="hidden md:flex items-center gap-3">
-         <div className="px-3 py-1 rounded-full bg-emerald-500/5 border border-emerald-500/20 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
-            <span className="text-[10px] font-mono font-medium text-emerald-400">System Active</span>
+         <div className="relative group">
+             <select
+                value={geminiModel}
+                onChange={(e) => setGeminiModel(e.target.value as GeminiModelType)}
+                className="appearance-none bg-[#13151C] border border-white/10 text-slate-300 text-[10px] font-mono font-medium rounded-full pl-3 pr-8 py-1.5 focus:outline-none focus:border-indigo-500 hover:border-white/20 transition-all shadow-sm cursor-pointer"
+             >
+                <option value="gemini-3-pro">Gemini 3.0 Pro</option>
+                <option value="gemini-3-flash">Gemini 3.0 Flash</option>
+             </select>
+             <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                     <path d="m6 9 6 6 6-6"/>
+                 </svg>
+             </div>
          </div>
       </div>
     </header>

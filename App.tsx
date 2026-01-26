@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Header } from './components/Header';
 import { PromptInput } from './components/PromptInput';
@@ -5,10 +6,9 @@ import { VideoPromptInput } from './components/VideoPromptInput';
 import { EditPromptInput } from './components/EditPromptInput';
 import { OutputDisplay } from './components/OutputDisplay';
 import { HistorySidebar } from './components/HistorySidebar';
-import { generateEnhancedPrompt, generateEnhancedVideoPrompt, generateEnhancedEditPrompt, refineEnhancedPrompt, refineEnhancedVideoPrompt, refineEnhancedEditPrompt, superEnhanceVideoPrompt, superEnhanceImagePrompt } from './services/geminiService';
-import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode, ImageModel, VideoModel, EditModel, HistoryItem } from './types';
-
-export type AppMode = 'image' | 'video' | 'edit';
+import { ReversePromptModal } from './components/ReversePromptModal';
+import { generateEnhancedPrompt, generateEnhancedVideoPrompt, generateEnhancedEditPrompt, refineEnhancedPrompt, refineEnhancedVideoPrompt, refineEnhancedEditPrompt, superEnhanceVideoPrompt, superEnhanceImagePrompt, reversePromptImage } from './services/geminiService';
+import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode, ImageModel, VideoModel, EditModel, HistoryItem, GeminiModelType, AppMode } from './types';
 
 const App: React.FC = () => {
   // Common state
@@ -20,6 +20,7 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('text');
   const [language, setLanguage] = useState<'en' | 'ru'>('en');
   const [enhancementPower, setEnhancementPower] = useState<number>(3);
+  const [geminiModel, setGeminiModel] = useState<GeminiModelType>('gemini-3-pro');
 
   // Image-specific state
   const [imagePrompt, setImagePrompt] = useState<string>('');
@@ -27,11 +28,13 @@ const App: React.FC = () => {
   const [compositionReference, setCompositionReference] = useState<string | null>(null);
   const [imageModel, setImageModel] = useState<ImageModel>('midjourney');
   const [imageOutput, setImageOutput] = useState<EnhancedPrompt | null>(null);
+  const [isReversePromptOpen, setIsReversePromptOpen] = useState<boolean>(false);
 
   // Video-specific state
   const [videoPrompt, setVideoPrompt] = useState<string>('');
   const [firstFrame, setFirstFrame] = useState<string | null>(null);
   const [lastFrame, setLastFrame] = useState<string | null>(null);
+  const [videoCharacterReferences, setVideoCharacterReferences] = useState<string[]>([]);
   const [videoModel, setVideoModel] = useState<VideoModel>('veo');
   const [videoOutput, setVideoOutput] = useState<EnhancedVideoPrompt | null>(null);
 
@@ -61,7 +64,7 @@ const App: React.FC = () => {
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedPrompt(imagePrompt, language, imageModel, characterReference, compositionReference, enhancementPower);
+      const result = await generateEnhancedPrompt(imagePrompt, language, imageModel, geminiModel, characterReference, compositionReference, enhancementPower);
       setImageOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -73,6 +76,7 @@ const App: React.FC = () => {
         characterReference,
         compositionReference,
         enhancementPower,
+        geminiModel
       };
       setHistory(prev => [newHistoryItem, ...prev]);
       setActiveHistoryId(newHistoryItem.id);
@@ -82,15 +86,40 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [imagePrompt, language, imageModel, characterReference, compositionReference, enhancementPower]);
+  }, [imagePrompt, language, imageModel, geminiModel, characterReference, compositionReference, enhancementPower]);
+
+  const handleReversePrompt = async (imageBase64: string, context: string) => {
+    setIsLoading(true);
+    setError(null);
+    setIsReversePromptOpen(false);
+    resetAllOutputs();
+    try {
+      const result = await reversePromptImage(imageBase64, context, imageModel, geminiModel);
+      setImageOutput(result);
+      const newHistoryItem: HistoryItem = {
+        id: Date.now().toString(),
+        type: 'image',
+        simplePrompt: `Reverse Prompting: ${context || 'Image Analysis'}`,
+        language,
+        model: imageModel,
+        output: result,
+        enhancementPower: 3,
+        geminiModel
+      };
+      setHistory(prev => [newHistoryItem, ...prev]);
+      setActiveHistoryId(newHistoryItem.id);
+    } catch (e: any) {
+      console.error(e);
+      setError(`Failed to reverse prompt image. ${e.message || 'Please try again.'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleVideoGenerate = useCallback(async () => {
-    if (!firstFrame) {
-      setError('Please upload a first frame image.');
-      return;
-    }
-    if (!lastFrame && !videoPrompt.trim()) {
-      setError('Please enter a prompt if you are not providing a last frame.');
+    // Check if at least one input is provided
+    if (!firstFrame && !lastFrame && !videoPrompt.trim() && videoCharacterReferences.length === 0) {
+      setError('Please provide at least a prompt, a start/end frame, or a character reference.');
       return;
     }
 
@@ -98,7 +127,7 @@ const App: React.FC = () => {
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedVideoPrompt(videoPrompt, firstFrame, lastFrame, language, videoModel, enhancementPower);
+      const result = await generateEnhancedVideoPrompt(videoPrompt, firstFrame, lastFrame, videoCharacterReferences, language, videoModel, geminiModel, enhancementPower);
       setVideoOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -107,9 +136,11 @@ const App: React.FC = () => {
         language,
         model: videoModel,
         output: result,
-        firstFrame: firstFrame,
-        lastFrame: lastFrame,
+        firstFrame: firstFrame || null,
+        lastFrame: lastFrame || null,
+        characterReferences: videoCharacterReferences,
         enhancementPower,
+        geminiModel
       };
       setHistory(prev => [newHistoryItem, ...prev]);
       setActiveHistoryId(newHistoryItem.id);
@@ -119,7 +150,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [videoPrompt, firstFrame, lastFrame, language, videoModel, enhancementPower]);
+  }, [videoPrompt, firstFrame, lastFrame, videoCharacterReferences, language, videoModel, geminiModel, enhancementPower]);
   
   const handleEditGenerate = useCallback(async () => {
     if (!editPrompt.trim()) {
@@ -134,7 +165,7 @@ const App: React.FC = () => {
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedEditPrompt(editPrompt, editImage, language, editModel, enhancementPower);
+      const result = await generateEnhancedEditPrompt(editPrompt, editImage, language, editModel, geminiModel, enhancementPower);
       setEditOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -145,6 +176,7 @@ const App: React.FC = () => {
         output: result,
         sourceImage: editImage,
         enhancementPower,
+        geminiModel
       };
       setHistory(prev => [newHistoryItem, ...prev]);
       setActiveHistoryId(newHistoryItem.id);
@@ -154,7 +186,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [editPrompt, editImage, language, editModel, enhancementPower]);
+  }, [editPrompt, editImage, language, editModel, geminiModel, enhancementPower]);
 
   const handleRefine = useCallback(async (refinementPrompt: string) => {
     if (!refinementPrompt.trim()) return;
@@ -165,13 +197,13 @@ const App: React.FC = () => {
     try {
       let newOutput;
       if (mode === 'image' && imageOutput) {
-        newOutput = await refineEnhancedPrompt(imageOutput, refinementPrompt, imageModel);
+        newOutput = await refineEnhancedPrompt(imageOutput, refinementPrompt, imageModel, geminiModel);
         setImageOutput(newOutput);
       } else if (mode === 'video' && videoOutput) {
-        newOutput = await refineEnhancedVideoPrompt(videoOutput, refinementPrompt, videoModel);
+        newOutput = await refineEnhancedVideoPrompt(videoOutput, refinementPrompt, videoModel, geminiModel);
         setVideoOutput(newOutput);
       } else if (mode === 'edit' && editOutput) {
-        newOutput = await refineEnhancedEditPrompt(editOutput, refinementPrompt, editModel);
+        newOutput = await refineEnhancedEditPrompt(editOutput, refinementPrompt, editModel, geminiModel);
         setEditOutput(newOutput);
       }
       
@@ -191,7 +223,7 @@ const App: React.FC = () => {
       setIsRefining(false);
     }
 
-  }, [mode, imageOutput, videoOutput, editOutput, imageModel, videoModel, editModel, activeHistoryId]);
+  }, [mode, imageOutput, videoOutput, editOutput, imageModel, videoModel, editModel, geminiModel, activeHistoryId]);
 
   const handleSuperEnhance = useCallback(async () => {
     if ((mode !== 'video' || !videoOutput) && (mode !== 'image' || !imageOutput)) return;
@@ -201,171 +233,179 @@ const App: React.FC = () => {
 
     try {
       if (mode === 'video' && videoOutput) {
-        const newOutput = await superEnhanceVideoPrompt(videoOutput, videoModel);
+        const newOutput = await superEnhanceVideoPrompt(videoOutput, videoModel, geminiModel);
         setVideoOutput(newOutput);
         
         if (activeHistoryId) {
-          setHistory(prev => prev.map(item => 
-            (item.id === activeHistoryId && item.type === 'video') ? { ...item, output: newOutput } : item
-          ));
+            setHistory(prev => prev.map(item => {
+                if (item.id === activeHistoryId) {
+                    return { ...item, output: newOutput };
+                }
+                return item;
+            }));
         }
+
       } else if (mode === 'image' && imageOutput) {
-        const newOutput = await superEnhanceImagePrompt(imageOutput, imageModel);
+        const newOutput = await superEnhanceImagePrompt(imageOutput, imageModel, geminiModel);
         setImageOutput(newOutput);
 
-        if (activeHistoryId) {
-          setHistory(prev => prev.map(item => 
-            (item.id === activeHistoryId && item.type === 'image') ? { ...item, output: newOutput } : item
-          ));
+         if (activeHistoryId) {
+            setHistory(prev => prev.map(item => {
+                if (item.id === activeHistoryId) {
+                    return { ...item, output: newOutput };
+                }
+                return item;
+            }));
         }
       }
+
     } catch (e: any) {
       console.error(e);
-      setError(`Failed to super-enhance prompt. ${e.message || 'Please try again.'}`);
+      setError(`Failed to super-enhance. ${e.message || 'Please try again.'}`);
     } finally {
       setIsSuperEnhancing(false);
     }
-  }, [mode, videoOutput, videoModel, imageOutput, imageModel, activeHistoryId]);
-  
-  const handleSelectHistory = useCallback((id: string) => {
-    const item = history.find(h => h.id === id);
+  }, [mode, videoOutput, imageOutput, videoModel, imageModel, geminiModel, activeHistoryId]);
+
+  const handleHistorySelect = (id: string) => {
+    const item = history.find(i => i.id === id);
     if (!item) return;
 
-    setError(null);
+    setActiveHistoryId(id);
     setMode(item.type);
-    setLanguage(item.language);
-    setActiveHistoryId(item.id);
-    setEnhancementPower(item.enhancementPower ?? 3);
     
-    // Reset all inputs and outputs before setting the active one
-    setImagePrompt(''); setImageOutput(null); setCharacterReference(null); setCompositionReference(null);
-    setVideoPrompt(''); setVideoOutput(null); setFirstFrame(null); setLastFrame(null);
-    setEditPrompt(''); setEditOutput(null); setEditImage(null);
+    // Restore state from history
+    setLanguage(item.language);
+    if (item.enhancementPower) setEnhancementPower(item.enhancementPower);
+    if (item.geminiModel) setGeminiModel(item.geminiModel);
 
     if (item.type === 'image') {
-      setImagePrompt(item.simplePrompt);
-      setImageModel(item.model);
-      setImageOutput(item.output);
-      setCharacterReference(item.characterReference || null);
-      setCompositionReference(item.compositionReference || null);
+        setImagePrompt(item.simplePrompt);
+        setImageModel(item.model);
+        setImageOutput(item.output);
+        setCharacterReference(item.characterReference || null);
+        setCompositionReference(item.compositionReference || null);
+        setVideoOutput(null);
+        setEditOutput(null);
     } else if (item.type === 'video') {
-      setVideoPrompt(item.simplePrompt);
-      setVideoModel(item.model);
-      setVideoOutput(item.output);
-      setFirstFrame(item.firstFrame);
-      setLastFrame(item.lastFrame || null);
+        setVideoPrompt(item.simplePrompt);
+        setVideoModel(item.model);
+        setVideoOutput(item.output);
+        setFirstFrame(item.firstFrame || null);
+        setLastFrame(item.lastFrame || null);
+        setVideoCharacterReferences(item.characterReferences || []);
+        setImageOutput(null);
+        setEditOutput(null);
     } else if (item.type === 'edit') {
-      setEditPrompt(item.simplePrompt);
-      setEditModel(item.model);
-      setEditOutput(item.output);
-      setEditImage(item.sourceImage);
-    }
-  }, [history]);
-
-  const handleClearHistory = useCallback(() => {
-    setHistory([]);
-    setActiveHistoryId(null);
-    setImagePrompt('');
-    setImageOutput(null);
-    setCharacterReference(null);
-    setCompositionReference(null);
-    setVideoPrompt('');
-    setVideoOutput(null);
-    setFirstFrame(null);
-    setLastFrame(null);
-    setEditPrompt('');
-    setEditOutput(null);
-    setEditImage(null);
-    setError(null);
-    setEnhancementPower(3);
-  }, []);
-
-  const currentOutput = mode === 'image' ? imageOutput : mode === 'video' ? videoOutput : editOutput;
-
-  const renderInput = () => {
-    switch(mode) {
-      case 'image':
-        return <PromptInput
-          prompt={imagePrompt}
-          setPrompt={setImagePrompt}
-          characterReference={characterReference}
-          setCharacterReference={setCharacterReference}
-          compositionReference={compositionReference}
-          setCompositionReference={setCompositionReference}
-          language={language}
-          setLanguage={setLanguage}
-          imageModel={imageModel}
-          setImageModel={setImageModel}
-          enhancementPower={enhancementPower}
-          setEnhancementPower={setEnhancementPower}
-          onGenerate={handleImageGenerate}
-          isLoading={isLoading}
-        />;
-      case 'video':
-        return <VideoPromptInput
-          prompt={videoPrompt}
-          setPrompt={setVideoPrompt}
-          language={language}
-          setLanguage={setLanguage}
-          firstFrame={firstFrame}
-          setFirstFrame={setFirstFrame}
-          lastFrame={lastFrame}
-          setLastFrame={setLastFrame}
-          videoModel={videoModel}
-          setVideoModel={setVideoModel}
-          enhancementPower={enhancementPower}
-          setEnhancementPower={setEnhancementPower}
-          onGenerate={handleVideoGenerate}
-          isLoading={isLoading}
-        />;
-      case 'edit':
-        return <EditPromptInput
-          prompt={editPrompt}
-          setPrompt={setEditPrompt}
-          language={language}
-          setLanguage={setLanguage}
-          sourceImage={editImage}
-          setSourceImage={setEditImage}
-          editModel={editModel}
-          setEditModel={setEditModel}
-          enhancementPower={enhancementPower}
-          setEnhancementPower={setEnhancementPower}
-          onGenerate={handleEditGenerate}
-          isLoading={isLoading}
-        />
+        setEditPrompt(item.simplePrompt);
+        setEditModel(item.model);
+        setEditOutput(item.output);
+        setEditImage(item.sourceImage);
+        setImageOutput(null);
+        setVideoOutput(null);
     }
   };
 
+  const handleHistoryClear = () => {
+    if (confirm('Are you sure you want to clear your history?')) {
+        setHistory([]);
+        resetAllOutputs();
+    }
+  };
+
+  const onGenerate = () => {
+    if (mode === 'image') handleImageGenerate();
+    else if (mode === 'video') handleVideoGenerate();
+    else if (mode === 'edit') handleEditGenerate();
+  };
+
+  const currentOutput = mode === 'image' ? imageOutput : mode === 'video' ? videoOutput : editOutput;
+
   return (
-    <div className="min-h-screen font-sans text-slate-300 bg-[#02040a] relative overflow-hidden selection:bg-indigo-500/30">
-        {/* Sophisticated Ambient Light - Increased opacity slightly for separation */}
-        <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-900/15 rounded-full blur-[150px] pointer-events-none mix-blend-screen" />
-        <div className="fixed top-[20%] right-[-10%] w-[40%] h-[60%] bg-violet-900/15 rounded-full blur-[180px] pointer-events-none mix-blend-screen" />
-        <div className="fixed bottom-[-20%] left-[20%] w-[60%] h-[50%] bg-cyan-900/10 rounded-full blur-[150px] pointer-events-none mix-blend-screen" />
-        
-        {/* Main Content Container */}
-        <div className="relative z-10 max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6 h-screen flex flex-col">
-            <Header mode={mode} setMode={setMode} />
-            
-            <div className="mt-6 flex-grow grid grid-cols-1 lg:grid-cols-[260px_1fr_1fr] xl:grid-cols-[300px_minmax(500px,1fr)_minmax(500px,1fr)] gap-6 h-full min-h-0">
-                {/* History - Hidden on mobile, visible on LG+ */}
-                <div className="hidden lg:block h-full min-h-0">
-                   <HistorySidebar
-                        history={history}
-                        activeId={activeHistoryId}
-                        onSelect={handleSelectHistory}
-                        onClear={handleClearHistory}
+    <div className="flex flex-col h-screen overflow-hidden bg-[#02040a] text-slate-200 font-sans selection:bg-indigo-500/30">
+        {/* Ambient Background Gradients */}
+        <div className="fixed inset-0 pointer-events-none z-0">
+             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-900/10 rounded-full blur-[120px]" />
+             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-900/10 rounded-full blur-[120px]" />
+             <div className="absolute top-[20%] right-[20%] w-[20%] h-[20%] bg-cyan-900/5 rounded-full blur-[80px]" />
+        </div>
+
+        <div className="relative z-10 flex flex-col h-full max-w-[1600px] mx-auto w-full px-4 md:px-6">
+            <Header mode={mode} setMode={setMode} geminiModel={geminiModel} setGeminiModel={setGeminiModel} />
+
+            <main className="flex-grow flex flex-col md:flex-row gap-6 pb-6 min-h-0">
+                {/* Left Sidebar - History */}
+                <div className="hidden md:flex flex-col w-64 flex-shrink-0">
+                    <HistorySidebar 
+                        history={history} 
+                        activeId={activeHistoryId} 
+                        onSelect={handleHistorySelect}
+                        onClear={handleHistoryClear}
                     />
                 </div>
 
-                {/* Input Panel */}
-                <div className="flex flex-col h-full min-h-0">
-                    {renderInput()}
+                {/* Center - Input */}
+                <div className="flex-1 min-w-0 flex flex-col h-full">
+                   {mode === 'image' && (
+                        <PromptInput 
+                            prompt={imagePrompt}
+                            setPrompt={setImagePrompt}
+                            characterReference={characterReference}
+                            setCharacterReference={setCharacterReference}
+                            compositionReference={compositionReference}
+                            setCompositionReference={setCompositionReference}
+                            language={language}
+                            setLanguage={setLanguage}
+                            imageModel={imageModel}
+                            setImageModel={setImageModel}
+                            enhancementPower={enhancementPower}
+                            setEnhancementPower={setEnhancementPower}
+                            onGenerate={onGenerate}
+                            isLoading={isLoading}
+                            onReversePromptOpen={() => setIsReversePromptOpen(true)}
+                        />
+                   )}
+                   {mode === 'video' && (
+                       <VideoPromptInput 
+                            prompt={videoPrompt}
+                            setPrompt={setVideoPrompt}
+                            language={language}
+                            setLanguage={setLanguage}
+                            firstFrame={firstFrame}
+                            setFirstFrame={setFirstFrame}
+                            lastFrame={lastFrame}
+                            setLastFrame={setLastFrame}
+                            characterReferences={videoCharacterReferences}
+                            setCharacterReferences={setVideoCharacterReferences}
+                            videoModel={videoModel}
+                            setVideoModel={setVideoModel}
+                            enhancementPower={enhancementPower}
+                            setEnhancementPower={setEnhancementPower}
+                            onGenerate={onGenerate}
+                            isLoading={isLoading}
+                       />
+                   )}
+                   {mode === 'edit' && (
+                        <EditPromptInput 
+                            prompt={editPrompt}
+                            setPrompt={setEditPrompt}
+                            language={language}
+                            setLanguage={setLanguage}
+                            sourceImage={editImage}
+                            setSourceImage={setEditImage}
+                            editModel={editModel}
+                            setEditModel={setEditModel}
+                            enhancementPower={enhancementPower}
+                            setEnhancementPower={setEnhancementPower}
+                            onGenerate={onGenerate}
+                            isLoading={isLoading}
+                        />
+                   )}
                 </div>
 
-                {/* Output Panel */}
-                <div className="flex flex-col h-full min-h-0">
-                    <OutputDisplay
+                {/* Right - Output */}
+                <div className="flex-1 min-w-0 flex flex-col h-full">
+                    <OutputDisplay 
                         output={currentOutput}
                         isLoading={isLoading}
                         isRefining={isRefining}
@@ -377,8 +417,17 @@ const App: React.FC = () => {
                         onSuperEnhance={handleSuperEnhance}
                     />
                 </div>
-            </div>
+            </main>
         </div>
+
+        {/* Reverse Prompt Modal */}
+        {isReversePromptOpen && (
+            <ReversePromptModal 
+                onClose={() => setIsReversePromptOpen(false)}
+                onReverse={handleReversePrompt}
+                isLoading={isLoading}
+            />
+        )}
     </div>
   );
 };

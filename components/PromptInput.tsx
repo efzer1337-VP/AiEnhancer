@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ImageIcon } from './icons/ImageIcon';
@@ -18,13 +19,14 @@ interface PromptInputProps {
   setEnhancementPower: (power: number) => void;
   onGenerate: () => void;
   isLoading: boolean;
+  onReversePromptOpen: () => void;
 }
 
 const imageModels: { id: ImageModel; name: string }[] = [
   { id: 'midjourney', name: 'Midjourney' },
   { id: 'nanobanana', name: 'NanoBanana' },
   { id: 'flux', name: 'Flux' },
-  { id: 'wan', name: 'Wan' },
+  { id: 'z-image', name: 'Z-Image' },
 ];
 
 const powerLabels: { [key: number]: string } = {
@@ -133,11 +135,20 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   setEnhancementPower,
   onGenerate,
   isLoading,
+  onReversePromptOpen,
 }) => {
   return (
-    <div className="bg-[#13151C]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-6 h-full ring-1 ring-white/5">
-      <div className="flex items-center justify-between">
-         <h2 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Input Config</h2>
+    <div className="bg-[#13151C]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-6 h-full ring-1 ring-white/5 overflow-y-auto custom-scrollbar">
+      <div className="flex items-center justify-between flex-shrink-0">
+         <div className="flex items-center gap-3">
+            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Input Config</h2>
+            <button
+                onClick={onReversePromptOpen}
+                className="text-[10px] bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded transition-all font-bold uppercase tracking-tight"
+            >
+                Reverse Prompting
+            </button>
+         </div>
          <select
             value={language}
             onChange={(e) => setLanguage(e.target.value as 'en' | 'ru')}
@@ -149,7 +160,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
       </div>
 
       {/* Image Dropzones */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 flex-shrink-0">
         <ImageDropzone 
           title="Character Ref" 
           subtitle="Optional face/char"
@@ -167,7 +178,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
       </div>
       
       {/* Controls */}
-      <div className="space-y-5">
+      <div className="space-y-5 flex-shrink-0">
         <div className="space-y-2.5">
             <div className="flex justify-between text-xs font-medium">
                 <label className="text-slate-400">Enhancement Strength</label>
@@ -226,23 +237,25 @@ export const PromptInput: React.FC<PromptInputProps> = ({
         />
       </div>
 
-      <button
-        onClick={onGenerate}
-        disabled={isLoading || (!prompt.trim() && !characterReference && !compositionReference)}
-        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium py-3.5 px-4 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_30px_rgba(79,70,229,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-white/10"
-      >
-        {isLoading ? (
-          <div className="flex items-center gap-2">
-             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-             <span className="text-sm">Processing...</span>
-          </div>
-        ) : (
-          <>
-            <SparklesIcon className="w-4 h-4" />
-            <span className="text-sm tracking-wide">Enhance Prompt</span>
-          </>
-        )}
-      </button>
+      <div className="pt-2 pb-1 flex-shrink-0">
+          <button
+            onClick={onGenerate}
+            disabled={isLoading || (!prompt.trim() && !characterReference && !compositionReference)}
+            className="relative z-10 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium py-3.5 px-4 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_30px_rgba(79,70,229,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-white/10"
+          >
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                 <span className="text-sm">Processing...</span>
+              </div>
+            ) : (
+              <>
+                <SparklesIcon className="w-4 h-4" />
+                <span className="text-sm tracking-wide">Enhance Prompt</span>
+              </>
+            )}
+          </button>
+      </div>
     </div>
   );
 };

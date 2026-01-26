@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { HistoryItem } from '../types';
 import { ImageIcon } from './icons/ImageIcon';
@@ -59,13 +60,24 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({ history, activeI
               <div className={`mt-0.5 flex-shrink-0 transition-colors ${activeId === item.id ? 'text-indigo-400' : 'opacity-50 group-hover:text-slate-300'}`}>
                 {getIcon(item.type)}
               </div>
-              <div className="flex flex-col min-w-0 gap-0.5">
+              <div className="flex flex-col min-w-0 gap-1 flex-grow">
                  <span className="truncate text-xs font-medium leading-snug">
                     {item.simplePrompt || (item.type === 'video' ? 'Video Generation' : 'Image Editing')}
                  </span>
-                 <span className="text-[10px] opacity-60 font-mono uppercase tracking-wide">
-                    {item.model}
-                 </span>
+                 <div className="flex items-center gap-2">
+                    <span className="text-[10px] opacity-60 font-mono uppercase tracking-wide">
+                        {item.model}
+                    </span>
+                    {item.geminiModel && (
+                         <span className={`text-[9px] px-1 py-0.5 rounded border ${
+                            item.geminiModel === 'gemini-3-pro' 
+                                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' 
+                                : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                         }`}>
+                             {item.geminiModel === 'gemini-3-pro' ? 'G 3.0 Pro' : 'G 3.0 Flash'}
+                         </span>
+                    )}
+                 </div>
               </div>
             </button>
           ))

@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
 import type { EditModel } from '../types';
@@ -19,7 +20,7 @@ interface EditPromptInputProps {
 
 const editModels: { id: EditModel; name: string }[] = [
   { id: 'nanobanana', name: 'NanoBanana' },
-  { id: 'wan', name: 'Wan Edit' },
+  { id: 'z-image', name: 'Z-Image Edit' },
 ];
 
 const powerLabels: { [key: number]: string } = {

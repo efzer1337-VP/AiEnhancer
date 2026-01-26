@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode } from '../types';
 import { CodeIcon } from './icons/CodeIcon';
@@ -22,7 +23,7 @@ interface OutputDisplayProps {
 
 // Type guards
 const isImagePrompt = (o: any): o is EnhancedPrompt => o && o.prompt && 'core' in o.prompt;
-const isVideoPrompt = (o: any): o is EnhancedVideoPrompt => o && 'description' in o && 'keywords' in o && 'camera' in o;
+const isVideoPrompt = (o: any): o is EnhancedVideoPrompt => o && 'full_prompt' in o;
 const isEditPrompt = (o: any): o is EnhancedEditPrompt => o && 'master_prompt' in o;
 
 // Helper for collapsible sections
@@ -302,33 +303,55 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
     );
   };
 
-  // Specific view for EnhancedVideoPrompt
+  // Simplified Video View: Single Continuous Narrative
   const renderVideoView = (data: EnhancedVideoPrompt) => (
-    <div>
+    <div className="flex flex-col h-full">
       <RefineInput onRefine={onRefine} isRefining={isRefining} />
       
-      <CollapsibleSection title="Cinematic Brief" defaultOpen={true}>
-        <p className="text-slate-300 font-mono text-sm leading-relaxed">{data.description}</p>
-      </CollapsibleSection>
+      <div className="flex-grow p-6 space-y-8">
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <h3 className="text-[10px] uppercase tracking-widest text-slate-500 font-bold flex items-center gap-2">
+                    <span className="w-1 h-3 bg-indigo-500 rounded-full"></span>
+                    Director's Master Prompt
+                </h3>
+                <button
+                    onClick={() => handleCopy(data.full_prompt, 'video-full')}
+                    className="flex items-center gap-2 text-[10px] text-slate-500 hover:text-indigo-400 transition-colors uppercase font-bold"
+                >
+                    {copiedKey === 'video-full' ? <CheckIcon className="w-3 h-3" /> : <ClipboardIcon className="w-3 h-3" />}
+                    {copiedKey === 'video-full' ? 'Copied' : 'Copy Prompt'}
+                </button>
+            </div>
+            <div className="bg-[#0B0D12] border border-white/5 rounded-xl p-5 shadow-inner">
+                <p className="text-slate-200 font-mono text-sm leading-relaxed whitespace-pre-wrap">
+                    {data.full_prompt}
+                </p>
+            </div>
+        </div>
 
-      <CollapsibleSection title="Shot Specs" defaultOpen={true}>
-        <Detail label="Style" value={data.style} />
-        <Detail label="Camera" value={data.camera} />
-        <Detail label="Lighting" value={data.lighting} />
-        <Detail label="Env" value={data.environment} />
-      </CollapsibleSection>
+        {data.audio_description && (
+            <div className="space-y-4">
+                <h3 className="text-[10px] uppercase tracking-widest text-slate-500 font-bold flex items-center gap-2">
+                    <span className="w-1 h-3 bg-violet-500 rounded-full"></span>
+                    Soundscape Specification
+                </h3>
+                <div className="bg-[#0B0D12] border border-white/5 rounded-xl p-5 shadow-inner">
+                    <p className="text-slate-400 font-mono text-xs leading-relaxed italic">
+                        {data.audio_description}
+                    </p>
+                </div>
+            </div>
+        )}
 
-      <CollapsibleSection title="Action & Motion">
-        <Detail label="Elements" value={data.elements} />
-        <Detail label="Motion" value={data.motion} />
-        <Detail label="Ending" value={data.ending} />
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Audio & Meta">
-        <Detail label="Text" value={data.text} />
-        <Detail label="Audio" value={data.audio} />
-        <Detail label="Keywords" value={data.keywords} />
-      </CollapsibleSection>
+        {data.model_notes && (
+            <div className="pt-4 border-t border-white/5">
+                <p className="text-[9px] text-slate-600 font-mono uppercase tracking-tighter">
+                    Technical Footnote: {data.model_notes}
+                </p>
+            </div>
+        )}
+      </div>
     </div>
   );
 

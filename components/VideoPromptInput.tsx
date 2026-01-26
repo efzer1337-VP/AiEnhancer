@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ImageIcon } from './icons/ImageIcon';
@@ -12,6 +13,8 @@ interface VideoPromptInputProps {
   setFirstFrame: (frame: string | null) => void;
   lastFrame: string | null;
   setLastFrame: (frame: string | null) => void;
+  characterReferences: string[];
+  setCharacterReferences: (refs: string[]) => void;
   videoModel: VideoModel;
   setVideoModel: (model: VideoModel) => void;
   enhancementPower: number;
@@ -22,7 +25,7 @@ interface VideoPromptInputProps {
 
 const videoModels: { id: VideoModel; name: string }[] = [
   { id: 'veo', name: 'VEO' },
-  { id: 'wan', name: 'Wan' },
+  { id: 'ltx2', name: 'LTX2' },
   { id: 'grok', name: 'Grok' },
 ];
 
@@ -36,10 +39,12 @@ const powerLabels: { [key: number]: string } = {
 
 const VideoImageDropzone: React.FC<{
   title: string;
+  subtitle?: string;
   image: string | null;
   setImage: (image: string | null) => void;
   isLoading: boolean;
-}> = ({ title, image, setImage, isLoading }) => {
+  className?: string;
+}> = ({ title, subtitle, image, setImage, isLoading, className }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
@@ -75,9 +80,9 @@ const VideoImageDropzone: React.FC<{
 
   return (
     <div
-      className={`group relative w-full border border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-300 flex flex-col justify-center items-center h-32 bg-zinc-900/30 hover:bg-white/[0.04] ${
+      className={`group relative w-full border border-dashed rounded-xl p-2 text-center cursor-pointer transition-all duration-300 flex flex-col justify-center items-center h-28 bg-zinc-900/30 hover:bg-white/[0.04] ${
         dragActive ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 hover:border-white/30'
-      }`}
+      } ${className}`}
       onClick={() => fileInputRef.current?.click()}
       onDragEnter={handleDrag}
       onDragOver={handleDrag}
@@ -94,18 +99,134 @@ const VideoImageDropzone: React.FC<{
       />
       {image ? (
          <>
-          <img src={image} alt={`${title} preview`} className="max-h-full max-w-full object-contain rounded-lg shadow-lg" />
+          <div className="absolute inset-0 bg-black/60 z-0 rounded-xl"></div>
+          <img src={image} alt={`${title} preview`} className="relative z-10 max-h-full max-w-full object-contain rounded-lg shadow-lg" />
           <button
             onClick={(e) => { e.stopPropagation(); setImage(null); }}
-            className="absolute -top-2 -right-2 bg-zinc-800 text-white rounded-full w-6 h-6 flex items-center justify-center border border-zinc-600 shadow-md hover:bg-red-500 transition-colors"
+            className="absolute -top-1.5 -right-1.5 bg-zinc-800 text-white rounded-full w-5 h-5 flex items-center justify-center border border-zinc-600 shadow-md hover:bg-red-500 transition-colors z-20"
           >
             &times;
           </button>
         </>
       ) : (
-         <div className="flex flex-col items-center justify-center h-full text-slate-500 group-hover:text-slate-300 transition-colors">
-          <ImageIcon className="w-5 h-5 mb-2 opacity-50" />
-          <p className="font-medium text-xs uppercase tracking-wide">{title}</p>
+         <div className="flex flex-col items-center justify-center h-full text-slate-500 group-hover:text-slate-300 transition-colors relative z-10">
+          <ImageIcon className="w-5 h-5 mb-1 opacity-50" />
+          <p className="font-medium text-[10px] uppercase tracking-wide">{title}</p>
+          {subtitle && <p className="text-[9px] text-slate-600 mt-0.5">{subtitle}</p>}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const MultiImageDropzone: React.FC<{
+  title: string;
+  subtitle?: string;
+  images: string[];
+  setImages: (images: string[]) => void;
+  isLoading: boolean;
+  className?: string;
+}> = ({ title, subtitle, images, setImages, isLoading, className }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleFileChange = (files: FileList | null) => {
+    if (files) {
+      const newImages: string[] = [];
+      const fileArray = Array.from(files);
+      
+      let processedCount = 0;
+      fileArray.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            newImages.push(e.target.result as string);
+          }
+          processedCount++;
+          if (processedCount === fileArray.length) {
+            setImages([...images, ...newImages]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files) {
+      handleFileChange(e.dataTransfer.files);
+    }
+  };
+
+  const removeImage = (indexToRemove: number) => {
+    setImages(images.filter((_, index) => index !== indexToRemove));
+  };
+
+  return (
+    <div
+      className={`group relative w-full border border-dashed rounded-xl p-2 text-center cursor-pointer transition-all duration-300 flex flex-col items-center min-h-[100px] bg-zinc-900/30 hover:bg-white/[0.04] ${
+        dragActive ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 hover:border-white/30'
+      } ${className}`}
+      onClick={(e) => {
+        // Only trigger click if not clicking a remove button
+        if (!(e.target as HTMLElement).closest('button')) {
+            fileInputRef.current?.click();
+        }
+      }}
+      onDragEnter={handleDrag}
+      onDragOver={handleDrag}
+      onDragLeave={handleDrag}
+      onDrop={handleDrop}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFileChange(e.target.files)}
+        disabled={isLoading}
+      />
+      
+      {images.length > 0 ? (
+        <div className="w-full">
+            <div className="grid grid-cols-4 gap-2 w-full p-1">
+                {images.map((img, index) => (
+                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 group/img">
+                        <img src={img} alt={`Ref ${index}`} className="w-full h-full object-cover" />
+                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity" />
+                         <button
+                            onClick={(e) => { e.stopPropagation(); removeImage(index); }}
+                            className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-500 transition-colors opacity-0 group-hover/img:opacity-100"
+                         >
+                            &times;
+                         </button>
+                    </div>
+                ))}
+                <div className="flex flex-col items-center justify-center aspect-square rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-colors">
+                     <span className="text-xl text-slate-500">+</span>
+                </div>
+            </div>
+             <p className="text-[9px] text-slate-500 mt-2 font-mono">{images.length} images selected</p>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full py-4 text-slate-500 group-hover:text-slate-300 transition-colors relative z-10">
+          <ImageIcon className="w-5 h-5 mb-1 opacity-50" />
+          <p className="font-medium text-[10px] uppercase tracking-wide">{title}</p>
+          {subtitle && <p className="text-[9px] text-slate-600 mt-0.5">{subtitle}</p>}
         </div>
       )}
     </div>
@@ -121,6 +242,8 @@ export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
   setFirstFrame,
   lastFrame,
   setLastFrame,
+  characterReferences,
+  setCharacterReferences,
   videoModel,
   setVideoModel,
   enhancementPower,
@@ -128,11 +251,12 @@ export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
   onGenerate,
   isLoading,
 }) => {
-  const isGenerateDisabled = isLoading || !firstFrame || (!lastFrame && !prompt.trim());
+  // Allow generation if ANY input is provided (Prompt OR FirstFrame OR LastFrame OR CharacterRef)
+  const isGenerateDisabled = isLoading || (!firstFrame && !lastFrame && characterReferences.length === 0 && !prompt.trim());
 
   return (
-    <div className="bg-[#13151C]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-6 h-full ring-1 ring-white/5">
-      <div className="flex items-center justify-between">
+    <div className="bg-[#13151C]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-6 h-full ring-1 ring-white/5 overflow-y-auto custom-scrollbar">
+      <div className="flex items-center justify-between flex-shrink-0">
          <h2 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Video Parameters</h2>
          <select
             value={language}
@@ -144,22 +268,39 @@ export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
           </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <VideoImageDropzone 
-          title="Start Frame"
-          image={firstFrame}
-          setImage={setFirstFrame}
-          isLoading={isLoading}
-        />
-        <VideoImageDropzone 
-          title="End Frame"
-          image={lastFrame}
-          setImage={setLastFrame}
-          isLoading={isLoading}
-        />
+      <div className="flex flex-col gap-3 flex-shrink-0">
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold ml-1">Timeline Ref</span>
+            <div className="grid grid-cols-2 gap-3">
+                <VideoImageDropzone 
+                title="Start Frame"
+                image={firstFrame}
+                setImage={setFirstFrame}
+                isLoading={isLoading}
+                />
+                <VideoImageDropzone 
+                title="End Frame"
+                image={lastFrame}
+                setImage={setLastFrame}
+                isLoading={isLoading}
+                />
+            </div>
+          </div>
+          
+          <div className="flex flex-col gap-2">
+             <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold ml-1">Subject Ref (Multiple)</span>
+             <MultiImageDropzone 
+                title="Character References"
+                subtitle="Upload consistent actor images"
+                images={characterReferences}
+                setImages={setCharacterReferences}
+                isLoading={isLoading}
+                className="min-h-[100px]"
+            />
+          </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 flex-shrink-0">
         {/* Enhancement Power Slider */}
         <div className="space-y-2">
             <div className="flex justify-between text-xs font-medium">
@@ -215,23 +356,25 @@ export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
         />
       </div>
 
-      <button
-        onClick={onGenerate}
-        disabled={isGenerateDisabled}
-        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium py-3.5 px-4 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_30px_rgba(79,70,229,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-white/10"
-      >
-        {isLoading ? (
-          <div className="flex items-center gap-2">
-             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-             <span className="text-sm">Analyzing...</span>
-          </div>
-        ) : (
-          <>
-            <SparklesIcon className="w-4 h-4" />
-            <span className="text-sm tracking-wide">Generate Shot Brief</span>
-          </>
-        )}
-      </button>
+      <div className="pt-2 pb-1 flex-shrink-0">
+          <button
+            onClick={onGenerate}
+            disabled={isGenerateDisabled}
+            className="relative z-10 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium py-3.5 px-4 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_30px_rgba(79,70,229,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-white/10"
+          >
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                 <span className="text-sm">Processing...</span>
+              </div>
+            ) : (
+              <>
+                <SparklesIcon className="w-4 h-4" />
+                <span className="text-sm tracking-wide">Enhance Video Prompt</span>
+              </>
+            )}
+          </button>
+      </div>
     </div>
   );
 };
