@@ -5,86 +5,103 @@ export type VideoModel = 'veo' | 'ltx2' | 'grok';
 export type EditModel = 'nanobanana' | 'z-image';
 export type GeminiModelType = 'gemini-3-flash' | 'gemini-3-pro';
 
-// --- NEW ENHANCED IMAGE PROMPT TYPES ---
+// --- IMAGE PROMPT TYPES (New PERFECT Schema) ---
 
-interface PromptCore {
-  subject: string;
-  concept: string;
+export interface PromptSubject {
+  description: string;
+  anatomy_constraints: string;
 }
 
-interface PromptStyle {
-  primary: string;
-  secondary: string;
-  mood: string;
-  artistic_influence: string;
+export interface PromptPose {
+  description: string;
+  skeletal_lock: string;
 }
 
-interface PromptCamera {
+export interface PromptEnvironment {
+  setting: string;
+  elements: string[];
+}
+
+export interface PromptCamera {
   shot_type: string;
-  angle: string;
-  lens: string;
-  focus: string;
+  perspective: string;
+  focal_length: string;
+  depth_of_field: string;
+  framing: string;
 }
 
-interface PromptLighting {
-  source: string;
-  effect: string;
-}
-
-interface PromptResolution {
+export interface PromptLighting {
+  type: string;
+  direction: string;
   quality: string;
-  texture: string;
+  shadows: string;
 }
 
-interface PromptTechnical {
+export interface PromptMood {
+  emotion: string;
+  facial_features: string;
+  atmosphere: string;
+}
+
+export interface PromptStyle {
+  style: string;
+  fidelity: string;
+  skin_texture: string;
+}
+
+export interface PromptColors {
+  palette: string;
+  contrast: string;
+  saturation: string;
+}
+
+export interface PromptTechnical {
+  resolution: string;
+  sharpness: string;
+  noise: string;
+}
+
+export interface PromptOutput {
+  ratio: string;
+  orientation: string;
+}
+
+export interface ControlNetConfig {
+  model_type: string;
+  purpose: string;
+  constraints: string;
+  recommended_weight: number;
+}
+
+export interface PromptControlNet {
+  pose_control: ControlNetConfig;
+  depth_control: ControlNetConfig;
+}
+
+export interface PromptNegative {
+  forbidden_content: string[];
+}
+
+export interface PromptObject {
+  subject: PromptSubject;
+  pose: PromptPose;
+  environment: PromptEnvironment;
   camera: PromptCamera;
   lighting: PromptLighting;
-  resolution: PromptResolution;
-}
-
-interface PromptBackground {
-  type: string;
-  description: string;
-  color: string;
-}
-
-interface PromptSceneSetup {
-  surface: string;
-  background: PromptBackground;
-  props: string;
-}
-
-interface ModificationDetails {
-  materials: string;
-  architectural_translation: string;
-}
-
-interface PromptModification {
-  target_area: string;
-  action: string;
-  details: ModificationDetails;
-}
-
-interface PromptQuality {
-  positive_keywords: string[];
-  negative_prompt: string;
-}
-
-interface PromptObject {
-  core: PromptCore;
-  style: PromptStyle;
-  technical: PromptTechnical;
-  scene_setup: PromptSceneSetup;
-  modifications: PromptModification[];
-  quality: PromptQuality;
+  mood_and_expression: PromptMood;
+  style_and_realism: PromptStyle;
+  colors_and_tone: PromptColors;
+  quality_and_technical_details: PromptTechnical;
+  aspect_ratio_and_output: PromptOutput;
+  controlnet: PromptControlNet;
+  negative_prompt: PromptNegative;
 }
 
 export interface EnhancedPrompt {
   prompt: PromptObject;
 }
 
-
-// --- ENHANCED VIDEO PROMPT TYPES ---
+// --- VIDEO PROMPT TYPES ---
 
 export interface EnhancedVideoPrompt {
   full_prompt: string;
@@ -92,8 +109,7 @@ export interface EnhancedVideoPrompt {
   model_notes?: string;
 }
 
-
-// --- ENHANCED EDIT PROMPT TYPES ---
+// --- EDIT PROMPT TYPES ---
 
 interface OriginalImageAnalysis {
   style: string;
@@ -120,9 +136,7 @@ export interface EnhancedEditPrompt {
   consistency_keywords: ConsistencyKeywords;
 }
 
-
 export type ViewMode = 'text' | 'json';
-
 
 // --- HISTORY TYPES ---
 export interface HistoryItemBase {

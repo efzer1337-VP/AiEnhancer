@@ -320,6 +320,7 @@ const App: React.FC = () => {
   };
 
   const currentOutput = mode === 'image' ? imageOutput : mode === 'video' ? videoOutput : editOutput;
+  const currentTargetModel = mode === 'image' ? imageModel : mode === 'video' ? videoModel : editModel;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[#02040a] text-slate-200 font-sans selection:bg-indigo-500/30">
@@ -407,6 +408,7 @@ const App: React.FC = () => {
                 <div className="flex-1 min-w-0 flex flex-col h-full">
                     <OutputDisplay 
                         output={currentOutput}
+                        targetModel={currentTargetModel}
                         isLoading={isLoading}
                         isRefining={isRefining}
                         isSuperEnhancing={isSuperEnhancing}

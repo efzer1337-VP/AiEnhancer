@@ -1,16 +1,15 @@
 
-import React, { useState, useEffect } from 'react';
-import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode } from '../types';
+import React, { useState } from 'react';
+import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode, ImageModel, VideoModel, EditModel } from '../types';
 import { CodeIcon } from './icons/CodeIcon';
-import { TextIcon } from './icons/TextIcon';
 import { SendIcon } from './icons/SendIcon';
 import { ClipboardIcon } from './icons/ClipboardIcon';
 import { CheckIcon } from './icons/CheckIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
 
-// Prop definitions
 interface OutputDisplayProps {
   output: EnhancedPrompt | EnhancedVideoPrompt | EnhancedEditPrompt | null;
+  targetModel?: ImageModel | VideoModel | EditModel;
   isLoading: boolean;
   isRefining: boolean;
   isSuperEnhancing: boolean;
@@ -21,12 +20,10 @@ interface OutputDisplayProps {
   onSuperEnhance: () => void;
 }
 
-// Type guards
-const isImagePrompt = (o: any): o is EnhancedPrompt => o && o.prompt && 'core' in o.prompt;
+const isImagePrompt = (o: any): o is EnhancedPrompt => o && o.prompt && 'subject' in o.prompt;
 const isVideoPrompt = (o: any): o is EnhancedVideoPrompt => o && 'full_prompt' in o;
 const isEditPrompt = (o: any): o is EnhancedEditPrompt => o && 'master_prompt' in o;
 
-// Helper for collapsible sections
 const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
@@ -37,318 +34,201 @@ const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode; d
         aria-expanded={isOpen}
       >
         <span className="text-[11px] uppercase tracking-widest opacity-90 font-semibold">{title}</span>
-        <svg
-          className={`w-4 h-4 transition-transform transform duration-200 ${isOpen ? 'rotate-180' : ''} opacity-50`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''} opacity-50`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {isOpen && <div className="p-4 bg-[#090a0e] animate-in fade-in slide-in-from-top-1 duration-200 border-t border-white/5">{children}</div>}
+      {isOpen && <div className="p-4 bg-[#090a0e] border-t border-white/5">{children}</div>}
     </div>
   );
 };
 
-// Helper for rendering key-value pairs
-const Detail: React.FC<{ label: string; value: string | string[] | number | null | undefined }> = ({ label, value }) => {
-    if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) return null;
+const Detail: React.FC<{ label: string; value: any }> = ({ label, value }) => {
+    if (!value || (Array.isArray(value) && value.length === 0)) return null;
     return (
       <div className="mb-3 last:mb-0 font-mono text-[13px] leading-relaxed">
-        <span className="text-indigo-400 mr-2 font-medium">{label}:</span>
+        <span className="text-indigo-400 mr-2 font-medium capitalize">{label.replace(/_/g, ' ')}:</span>
         {Array.isArray(value) ? (
           <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {value.map((item, index) => (
-                <span key={index} className="inline-block px-2 py-0.5 rounded bg-white/[0.07] text-slate-300 text-[11px] border border-white/[0.08]">
-                    {item}
-                </span>
-            ))}
+            {value.map((item, index) => <span key={index} className="px-2 py-0.5 rounded bg-white/[0.07] text-slate-300 text-[11px] border border-white/[0.08]">{item}</span>)}
           </div>
-        ) : (
-          <span className="text-slate-300 whitespace-pre-wrap">{value}</span>
-        )}
+        ) : typeof value === 'object' ? (
+          <div className="pl-4 mt-1 border-l border-white/10">
+             {Object.entries(value).map(([k, v]) => <Detail key={k} label={k} value={v} />)}
+          </div>
+        ) : <span className="text-slate-300 whitespace-pre-wrap">{String(value)}</span>}
       </div>
     );
-}
-
-type ImagePromptSection = 'core' | 'style' | 'technical' | 'scene_setup' | 'modifications' | 'quality';
+};
 
 const RefineInput: React.FC<{onRefine: (p: string) => void, isRefining: boolean}> = ({ onRefine, isRefining }) => {
     const [refinement, setRefinement] = useState('');
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (refinement.trim() && !isRefining) {
-            onRefine(refinement);
-            setRefinement('');
-        }
+        if (refinement.trim() && !isRefining) { onRefine(refinement); setRefinement(''); }
     };
-    
     return (
         <div className="p-3 border-b border-white/10 bg-[#0B0D12]">
             <form onSubmit={handleSubmit} className="flex items-center gap-2">
                 <div className="relative flex-grow">
-                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-indigo-500 text-xs font-mono">{'>'}</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500 text-xs font-mono">{'>'}</span>
                     <input
-                        type="text"
-                        value={refinement}
-                        onChange={(e) => setRefinement(e.target.value)}
-                        placeholder="Refine prompt (e.g., 'make it darker', 'add rain')..."
-                        className="w-full pl-7 pr-4 py-2 bg-[#090a0e] border border-white/10 rounded-md text-sm text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-colors font-mono"
+                        type="text" value={refinement} onChange={(e) => setRefinement(e.target.value)}
+                        placeholder="Refine parameters..." className="w-full pl-7 pr-4 py-2 bg-[#090a0e] border border-white/10 rounded-md text-sm text-slate-200 focus:ring-1 focus:ring-indigo-500/50 outline-none font-mono"
                         disabled={isRefining}
                     />
                 </div>
-                <button
-                    type="submit"
-                    disabled={isRefining || !refinement.trim()}
-                    className="p-2 bg-indigo-600 rounded-md text-white hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed transition-colors flex-shrink-0 border border-transparent disabled:border-white/5"
-                >
-                   {isRefining ? (
-                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                   ) : (
-                       <SendIcon className="w-4 h-4" />
-                   )}
+                <button type="submit" disabled={isRefining || !refinement.trim()} className="p-2 bg-indigo-600 rounded-md text-white hover:bg-indigo-500 disabled:bg-zinc-800 transition-colors">
+                   {isRefining ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <SendIcon className="w-4 h-4" />}
                 </button>
             </form>
         </div>
     );
-}
+};
 
 export const OutputDisplay: React.FC<OutputDisplayProps> = ({
-  output,
-  isLoading,
-  isRefining,
-  isSuperEnhancing,
-  error,
-  viewMode,
-  setViewMode,
-  onRefine,
-  onSuperEnhance,
+  output, targetModel, isLoading, isRefining, isSuperEnhancing, error, viewMode, setViewMode, onRefine, onSuperEnhance,
 }) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [selectedSections, setSelectedSections] = useState<Record<ImagePromptSection, boolean>>({
-    core: true,
-    style: true,
-    technical: true,
-    scene_setup: true,
-    modifications: true,
-    quality: true,
-  });
   
-  useEffect(() => {
-    if (output) {
-      setSelectedSections({
-        core: true,
-        style: true,
-        technical: true,
-        scene_setup: true,
-        modifications: true,
-        quality: true,
-      });
-    }
-  }, [output]);
-
-  const handleCopy = (textToCopy: string, key: string) => {
-    navigator.clipboard.writeText(textToCopy).then(() => {
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text).then(() => {
       setCopiedKey(key);
-      setTimeout(() => {
-        setCopiedKey(null);
-      }, 2000);
-    }).catch(err => {
-      console.error('Failed to copy text: ', err);
+      setTimeout(() => setCopiedKey(null), 2000);
     });
   };
 
-  // Specific view for EnhancedPrompt (Image)
+  const scrubNo = (text: string) => text.replace(/\bno\b/gi, "without");
+
+  const cleanPrefix = (text: string) => {
+      if (!text) return "";
+      // List of potential prefixes to remove
+      const prefixes = ["nanobanana", "midjourney", "flux", "z-image", "prompt for", "a prompt"];
+      let cleaned = text.trim();
+      
+      prefixes.forEach(p => {
+          const regex = new RegExp(`^${p}[:\\s-]*`, "i");
+          cleaned = cleaned.replace(regex, "");
+      });
+      
+      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  };
+
   const renderImageView = (data: EnhancedPrompt) => {
-    const { core, style, technical, scene_setup, modifications, quality } = data.prompt;
+    const p = data.prompt;
+    const isZImage = targetModel === 'z-image';
 
-    const handleSectionToggle = (section: ImagePromptSection) => {
-      setSelectedSections(prev => ({ ...prev, [section]: !prev[section] }));
+    const buildFullPrompt = () => {
+        const parts = [
+            cleanPrefix(p.subject.description),
+            p.pose.description,
+            p.environment.setting,
+            p.environment.elements.join(", "),
+            p.camera.shot_type,
+            p.camera.perspective,
+            p.camera.focal_length,
+            p.lighting.type,
+            p.lighting.quality,
+            p.mood_and_expression.atmosphere,
+            p.style_and_realism.style,
+            p.style_and_realism.fidelity,
+            p.quality_and_technical_details.resolution
+        ].filter(Boolean);
+        
+        let text = parts.join(", ");
+        if (isZImage) {
+            text = scrubNo(text);
+            if (p.negative_prompt.forbidden_content.length > 0) {
+                text += ` | Constraints: ${scrubNo(p.negative_prompt.forbidden_content.join(", "))}`;
+            }
+        }
+        return text;
     };
-    
-    const promptParts: string[] = [];
-    if (selectedSections.core) {
-        promptParts.push(core.subject, core.concept);
-    }
-    if (selectedSections.style) {
-        promptParts.push(`Style: ${style.primary}, ${style.secondary}.`, `Mood: ${style.mood}.`, `Influence: ${style.artistic_influence}.`);
-    }
-    if (selectedSections.technical) {
-        promptParts.push(
-            `Shot: ${technical.camera.shot_type}, ${technical.camera.angle}, with a ${technical.camera.lens}.`,
-            `Focus: ${technical.camera.focus}.`,
-            `Lighting: ${technical.lighting.source}, creating ${technical.lighting.effect}.`,
-            `Resolution: ${technical.resolution.quality}, with ${technical.resolution.texture} textures.`
-        );
-    }
-    if (selectedSections.scene_setup) {
-        promptParts.push(
-          `Scene: on a ${scene_setup.surface}, with ${scene_setup.props}.`,
-          `Background: ${scene_setup.background.description} (${scene_setup.background.type}) with ${scene_setup.background.color} colors.`
-        );
-    }
-    if (selectedSections.modifications && modifications?.length > 0) {
-        const mods = modifications.map(mod => `${mod.action} ${mod.target_area} using ${mod.details.materials}`).join(', ');
-        promptParts.push(`Modifications: ${mods}.`);
-    }
-    if (selectedSections.quality) {
-        promptParts.push(...quality.positive_keywords, `--no ${quality.negative_prompt}`);
-    }
 
-    const fullPrompt = promptParts.filter(p => p && p.trim() !== '').join(' ');
-
-    const sections: { key: ImagePromptSection; label: string }[] = [
-        { key: 'core', label: 'Core' },
-        { key: 'style', label: 'Style' },
-        { key: 'technical', label: 'Tech' },
-        { key: 'scene_setup', label: 'Scene' },
-        { key: 'modifications', label: 'Mods' },
-        { key: 'quality', label: 'Quality' },
-    ];
+    const fullPrompt = buildFullPrompt();
 
     return (
-      <div>
+      <div className="flex flex-col">
           <RefineInput onRefine={onRefine} isRefining={isRefining} />
           
-          <div className="border-b border-white/10 bg-[#0B0D12]">
-            <h3 className="w-full py-3 px-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                Composition
-            </h3>
-            <div className="px-4 pb-4 pt-1">
-                <div className="flex flex-wrap gap-2">
-                    {sections.map(({ key, label }) => (
-                        <button
-                            key={key}
-                            onClick={() => handleSectionToggle(key)}
-                            className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded border transition-all ${
-                                selectedSections[key]
-                                ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
-                                : 'bg-white/5 border-white/5 text-slate-500 hover:text-slate-300 hover:border-white/10'
-                            }`}
-                        >
-                            {label}
-                        </button>
-                    ))}
-                </div>
+          <CollapsibleSection title="Master Execution Prompt" defaultOpen={true}>
+            <div className="relative group">
+              <button onClick={() => handleCopy(fullPrompt, 'full')} className="absolute top-0 right-0 p-1.5 bg-zinc-800 rounded opacity-0 group-hover:opacity-100 transition-all z-10">
+                {copiedKey === 'full' ? <CheckIcon className="w-3 h-3 text-green-400" /> : <ClipboardIcon className="w-3 h-3" />}
+              </button>
+              <p className="text-slate-300 font-mono text-sm leading-relaxed whitespace-pre-wrap pr-8">{fullPrompt}</p>
             </div>
+          </CollapsibleSection>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 bg-[#0B0D12] border-b border-white/10">
+              <div className="p-4 border-r border-white/10 bg-indigo-500/5">
+                <h3 className="text-[10px] uppercase tracking-widest text-indigo-400 font-bold mb-3 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                    Anatomy & Skeletal Lock
+                </h3>
+                <div className="space-y-3">
+                    <Detail label="Subject Lock" value={p.subject.anatomy_constraints} />
+                    <Detail label="Skeletal Lock" value={p.pose.skeletal_lock} />
+                </div>
+              </div>
+              <div className="p-4 bg-emerald-500/5">
+                <h3 className="text-[10px] uppercase tracking-widest text-emerald-400 font-bold mb-3 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    ControlNet Config
+                </h3>
+                <div className="space-y-3">
+                    <Detail label="Pose Control" value={p.controlnet.pose_control} />
+                    <Detail label="Depth Control" value={p.controlnet.depth_control} />
+                </div>
+              </div>
           </div>
 
-          <CollapsibleSection title="Final Prompt Output" defaultOpen={true}>
-            <div className="relative group">
-              <button
-                onClick={() => handleCopy(fullPrompt, 'image-full')}
-                className="absolute top-0 right-0 p-1.5 bg-zinc-800 rounded border border-zinc-700 text-slate-400 hover:text-white transition-all z-10 opacity-0 group-hover:opacity-100 shadow-sm"
-                aria-label="Copy prompt"
-              >
-                {copiedKey === 'image-full' ? (
-                  <CheckIcon className="w-3 h-3 text-green-400" />
-                ) : (
-                  <ClipboardIcon className="w-3 h-3" />
-                )}
-              </button>
-              <p className="text-slate-300 font-mono text-sm leading-relaxed">{fullPrompt}</p>
-            </div>
+          <CollapsibleSection title="Subject & Pose Architecture">
+              <Detail label="Subject" value={cleanPrefix(p.subject.description)} />
+              <Detail label="Pose" value={p.pose.description} />
+              <Detail label="Expression" value={p.mood_and_expression} />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Core Data">
-              <Detail label="Subject" value={core.subject} />
-              <Detail label="Concept" value={core.concept} />
+          <CollapsibleSection title="Cinematography & Lighting">
+              <Detail label="Camera" value={p.camera} />
+              <Detail label="Lighting" value={p.lighting} />
+              <Detail label="Environment" value={p.environment} />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Style Matrix">
-              <Detail label="Primary" value={style.primary} />
-              <Detail label="Secondary" value={style.secondary} />
-              <Detail label="Mood" value={style.mood} />
-              <Detail label="Influence" value={style.artistic_influence} />
-          </CollapsibleSection>
-          
-          <CollapsibleSection title="Technical Specs">
-               <Detail label="Shot" value={technical.camera.shot_type} />
-               <Detail label="Angle" value={technical.camera.angle} />
-               <Detail label="Lens" value={technical.camera.lens} />
-               <Detail label="Focus" value={technical.camera.focus} />
-               <Detail label="Light Src" value={technical.lighting.source} />
-               <Detail label="Light FX" value={technical.lighting.effect} />
-               <Detail label="Quality" value={technical.resolution.quality} />
-               <Detail label="Texture" value={technical.resolution.texture} />
+          <CollapsibleSection title="Materials & Rendering">
+              <Detail label="Style & Fidelity" value={p.style_and_realism} />
+              <Detail label="Tones" value={p.colors_and_tone} />
+              <Detail label="Technical" value={p.quality_and_technical_details} />
+              <Detail label="Output" value={p.aspect_ratio_and_output} />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Environment">
-               <Detail label="Surface" value={scene_setup.surface} />
-               <Detail label="Bg Type" value={scene_setup.background.type} />
-               <Detail label="Bg Desc" value={scene_setup.background.description} />
-               <Detail label="Bg Color" value={scene_setup.background.color} />
-               <Detail label="Props" value={scene_setup.props} />
-          </CollapsibleSection>
-
-          {modifications.length > 0 && (
-              <CollapsibleSection title="Modifications">
-                {modifications.map((mod, i) => (
-                <div key={i} className="mb-4 p-3 border-l-2 border-indigo-500 bg-white/[0.03] rounded-r">
-                    <Detail label="Target" value={mod.target_area} />
-                    <Detail label="Action" value={mod.action} />
-                    <Detail label="Material" value={mod.details.materials} />
-                </div>
-                ))}
-              </CollapsibleSection>
-          )}
-
-          <CollapsibleSection title="Quality Tokens">
-               <Detail label="Positive" value={quality.positive_keywords} />
-               <Detail label="Negative" value={quality.negative_prompt} />
-          </CollapsibleSection>
+          <div className="p-4 bg-red-900/10">
+              <h3 className="text-[10px] uppercase tracking-widest text-red-400/80 font-bold mb-2">Strict Negative Terminal</h3>
+              <div className="bg-black/20 p-3 rounded-lg border border-red-500/10">
+                  <Detail label="Forbidden Content" value={p.negative_prompt.forbidden_content} />
+              </div>
+          </div>
       </div>
     );
   };
 
-  // Simplified Video View: Single Continuous Narrative
   const renderVideoView = (data: EnhancedVideoPrompt) => (
     <div className="flex flex-col h-full">
       <RefineInput onRefine={onRefine} isRefining={isRefining} />
-      
-      <div className="flex-grow p-6 space-y-8">
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h3 className="text-[10px] uppercase tracking-widest text-slate-500 font-bold flex items-center gap-2">
-                    <span className="w-1 h-3 bg-indigo-500 rounded-full"></span>
-                    Director's Master Prompt
-                </h3>
-                <button
-                    onClick={() => handleCopy(data.full_prompt, 'video-full')}
-                    className="flex items-center gap-2 text-[10px] text-slate-500 hover:text-indigo-400 transition-colors uppercase font-bold"
-                >
-                    {copiedKey === 'video-full' ? <CheckIcon className="w-3 h-3" /> : <ClipboardIcon className="w-3 h-3" />}
-                    {copiedKey === 'video-full' ? 'Copied' : 'Copy Prompt'}
-                </button>
-            </div>
-            <div className="bg-[#0B0D12] border border-white/5 rounded-xl p-5 shadow-inner">
-                <p className="text-slate-200 font-mono text-sm leading-relaxed whitespace-pre-wrap">
-                    {data.full_prompt}
-                </p>
-            </div>
+      <div className="flex-grow p-6 space-y-6">
+        <div className="flex items-center justify-between">
+            <h3 className="text-[10px] uppercase text-slate-500 font-bold">Director's Script</h3>
+            <button onClick={() => handleCopy(data.full_prompt, 'video-full')} className="text-slate-500 hover:text-indigo-400 transition-colors">
+                {copiedKey === 'video-full' ? <CheckIcon className="w-3 h-3" /> : <ClipboardIcon className="w-3 h-3" />}
+            </button>
         </div>
-
+        <div className="bg-[#0B0D12] border border-white/5 rounded-xl p-5 shadow-inner">
+            <p className="text-slate-200 font-mono text-sm leading-relaxed">{data.full_prompt}</p>
+        </div>
         {data.audio_description && (
-            <div className="space-y-4">
-                <h3 className="text-[10px] uppercase tracking-widest text-slate-500 font-bold flex items-center gap-2">
-                    <span className="w-1 h-3 bg-violet-500 rounded-full"></span>
-                    Soundscape Specification
-                </h3>
-                <div className="bg-[#0B0D12] border border-white/5 rounded-xl p-5 shadow-inner">
-                    <p className="text-slate-400 font-mono text-xs leading-relaxed italic">
-                        {data.audio_description}
-                    </p>
-                </div>
-            </div>
-        )}
-
-        {data.model_notes && (
-            <div className="pt-4 border-t border-white/5">
-                <p className="text-[9px] text-slate-600 font-mono uppercase tracking-tighter">
-                    Technical Footnote: {data.model_notes}
-                </p>
+            <div>
+                <h3 className="text-[10px] uppercase text-slate-500 font-bold mb-2">Audio Layer</h3>
+                <div className="bg-[#0B0D12] p-4 text-slate-400 text-xs italic border border-white/5 rounded-lg">{data.audio_description}</div>
             </div>
         )}
       </div>
@@ -358,152 +238,67 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
   const renderEditView = (data: EnhancedEditPrompt) => (
     <div>
        <RefineInput onRefine={onRefine} isRefining={isRefining} />
-       <CollapsibleSection title="Master Edit Command" defaultOpen={true}>
-        <div className="relative group">
-          <button
-            onClick={() => handleCopy(data.master_prompt, 'edit-master')}
-            className="absolute top-0 right-0 p-1.5 bg-zinc-800 rounded border border-zinc-700 text-slate-400 hover:text-white transition-all z-10 opacity-0 group-hover:opacity-100 shadow-sm"
-            aria-label="Copy prompt"
-          >
-            {copiedKey === 'edit-master' ? (
-              <CheckIcon className="w-3 h-3 text-green-400" />
-            ) : (
-              <ClipboardIcon className="w-3 h-3" />
-            )}
-          </button>
-          <p className="text-slate-300 font-mono text-sm">{data.master_prompt}</p>
-        </div>
-      </CollapsibleSection>
-      <CollapsibleSection title="Analysis">
-        <Detail label="Style" value={data.original_image_analysis.style} />
-        <Detail label="Lighting" value={data.original_image_analysis.lighting} />
-        <Detail label="Subject" value={data.original_image_analysis.subject} />
-        <Detail label="Comp" value={data.original_image_analysis.composition} />
-      </CollapsibleSection>
-      <CollapsibleSection title="Changes">
-        {data.requested_changes.map((change, i) => (
-          <div key={i} className="mb-3 p-3 border-l-2 border-indigo-500 bg-white/[0.03] rounded-r">
-            <Detail label="Target" value={change.target_area} />
-            <Detail label="Action" value={change.action} />
-            <Detail label="Detail" value={change.detailed_instruction} />
-          </div>
-        ))}
-      </CollapsibleSection>
-       <CollapsibleSection title="Consistency">
-        <Detail label="Keep" value={data.consistency_keywords.positive} />
-        <Detail label="Avoid" value={data.consistency_keywords.negative} />
-      </CollapsibleSection>
+       <CollapsibleSection title="Master Command" defaultOpen={true}>
+            <div className="relative group">
+                <button onClick={() => handleCopy(data.master_prompt, 'edit-master')} className="absolute top-0 right-0 p-1.5 bg-zinc-800 rounded opacity-0 group-hover:opacity-100 transition-all z-10">
+                    {copiedKey === 'edit-master' ? <CheckIcon className="w-3 h-3 text-green-400" /> : <ClipboardIcon className="w-3 h-3" />}
+                </button>
+                <p className="text-slate-300 font-mono text-sm leading-relaxed">{data.master_prompt}</p>
+            </div>
+       </CollapsibleSection>
+       <CollapsibleSection title="Analysis">
+            <Detail label="Analysis" value={data.original_image_analysis} />
+            <Detail label="Requested Changes" value={data.requested_changes} />
+            <Detail label="Consistency Keywords" value={data.consistency_keywords} />
+       </CollapsibleSection>
     </div>
   );
 
   const renderContent = () => {
-    if (isLoading) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full p-12 text-slate-500 font-mono text-sm">
-          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="animate-pulse text-slate-400">Processing Neural Data...</p>
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <div className="p-6 flex items-center justify-center h-full">
-          <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg max-w-md text-center shadow-lg shadow-red-900/20">
-            <p className="text-red-400 text-sm font-medium font-mono">System Error</p>
-            <p className="mt-2 text-slate-400 text-xs">{error}</p>
-          </div>
-        </div>
-      );
-    }
-
-    if (!output) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full p-12 text-slate-600 font-mono">
-          <div className="bg-white/[0.03] p-4 rounded-full mb-4 border border-white/[0.05]">
-            <CodeIcon className="w-6 h-6 opacity-40" />
-          </div>
-          <p className="text-sm tracking-wide text-slate-500">Awaiting Input Stream</p>
-          <p className="text-xs mt-2 opacity-40">Output will render here</p>
-        </div>
-      );
-    }
-
-    if (viewMode === 'json') {
-      const jsonString = JSON.stringify(output, null, 2);
-      return (
-        <div className="relative h-full bg-[#090a0e]">
-           <button
-            onClick={() => handleCopy(jsonString, 'json-full')}
-            className="absolute top-4 right-4 p-1.5 bg-zinc-800 rounded border border-zinc-700 text-slate-400 hover:text-white transition-all z-10 shadow-sm"
-            aria-label="Copy JSON"
-          >
-            {copiedKey === 'json-full' ? (
-              <CheckIcon className="w-3 h-3 text-green-400" />
-            ) : (
-              <ClipboardIcon className="w-3 h-3" />
-            )}
-          </button>
-          <pre className="p-6 text-xs text-indigo-200 font-mono overflow-x-auto h-full custom-scrollbar">
-            {jsonString}
-          </pre>
-        </div>
-      );
-    }
-    
+    if (isLoading) return <div className="flex flex-col items-center justify-center h-full p-12 text-slate-500 font-mono"><div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" /><p>Synthesizing Architecture...</p></div>;
+    if (error) return <div className="p-6 h-full flex items-center justify-center"><div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg text-red-400 text-xs font-mono">Fatal Linkage Error: {error}</div></div>;
+    if (!output) return <div className="flex flex-col items-center justify-center h-full p-12 text-slate-600 font-mono"><CodeIcon className="w-6 h-6 opacity-40 mb-4" /><p>Awaiting Stream Input</p></div>;
+    if (viewMode === 'json') return <div className="relative h-full bg-[#090a0e]"><pre className="p-6 text-xs text-indigo-200 font-mono overflow-x-auto h-full">{JSON.stringify(output, null, 2)}</pre></div>;
     if (isImagePrompt(output)) return renderImageView(output);
     if (isVideoPrompt(output)) return renderVideoView(output);
     if (isEditPrompt(output)) return renderEditView(output);
-
-    return <p className="p-4 text-red-500 font-mono text-xs">Unknown data format.</p>;
+    return null;
   };
 
   return (
     <div className="bg-[#13151C]/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col h-full overflow-hidden ring-1 ring-white/5">
       <div className="flex justify-between items-center px-4 py-3 border-b border-white/10 bg-[#0B0D12]">
         <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>
-           Output Terminal
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>
+            Output Terminal
         </h2>
-        
         {output && !isLoading && (
             <div className="flex items-center gap-3">
-               {(isImagePrompt(output) || isVideoPrompt(output)) && viewMode === 'text' && (
-                  <button
-                    onClick={onSuperEnhance}
-                    disabled={isSuperEnhancing || isRefining}
-                    className="group px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all duration-200 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSuperEnhancing ? (
-                        <div className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                        <SparklesIcon className="w-3 h-3" />
-                    )}
-                    <span>Super Enhance</span>
-                  </button>
-                )}
-                <div className="flex items-center bg-black/20 rounded-lg p-0.5 border border-white/10">
-                    <button 
-                        onClick={() => setViewMode('text')} 
-                        className={`px-3 py-1 rounded-md text-[10px] font-medium flex items-center gap-1.5 transition-all ${viewMode === 'text' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        <TextIcon className="w-3 h-3"/>
-                        Text
-                    </button>
-                    <button 
-                        onClick={() => setViewMode('json')} 
-                        className={`px-3 py-1 rounded-md text-[10px] font-medium flex items-center gap-1.5 transition-all ${viewMode === 'json' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        <CodeIcon className="w-3 h-3"/>
-                        JSON
-                    </button>
+                <button 
+                    onClick={onSuperEnhance} 
+                    disabled={isSuperEnhancing || isRefining} 
+                    className="px-3 py-1 rounded-md text-[10px] font-bold bg-violet-500/10 text-violet-300 border border-violet-500/20 hover:bg-violet-500/20 transition-all flex items-center gap-1.5"
+                >
+                    {isSuperEnhancing ? <div className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /> : <SparklesIcon className="w-3 h-3" />}
+                    <span>SUPER</span>
+                </button>
+
+                <button 
+                    onClick={() => handleCopy(JSON.stringify(output, null, 2), 'global-json')} 
+                    className="px-3 py-1 rounded-md text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all flex items-center gap-1.5"
+                >
+                    {copiedKey === 'global-json' ? <CheckIcon className="w-3 h-3 text-green-400" /> : <CodeIcon className="w-3 h-3" />}
+                    <span>JSON</span>
+                </button>
+
+                <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/10">
+                    <button onClick={() => setViewMode('text')} className={`px-3 py-1 rounded-md text-[10px] transition-all ${viewMode === 'text' ? 'bg-white/10 text-white' : 'text-slate-500'}`}>Text</button>
+                    <button onClick={() => setViewMode('json')} className={`px-3 py-1 rounded-md text-[10px] transition-all ${viewMode === 'json' ? 'bg-white/10 text-white' : 'text-slate-500'}`}>JSON</button>
                 </div>
             </div>
         )}
       </div>
-      <div className="flex-grow overflow-y-auto custom-scrollbar bg-[#090a0e]">
-          {renderContent()}
-      </div>
+      <div className="flex-grow overflow-y-auto custom-scrollbar bg-[#090a0e]">{renderContent()}</div>
     </div>
   );
 };

@@ -14,91 +14,34 @@ const getModelName = (modelType: GeminiModelType): string => {
 
 const getPowerDescription = (power: number): string => {
   const descriptions: { [key: number]: string } = {
-    1: "Subtle refinement. Fix grammar and add minimal detail. Keep it simple.",
-    2: "Mild enhancement. Improve clarity and add essential visual descriptors.",
-    3: "Balanced enhancement. Flesh out the scene with lighting, texture, and mood.",
-    4: "Strong enhancement. Add significant creative details, artistic influences, and complex camera directions.",
-    5: "Maximum creative expansion. Reimagine the prompt with vivid, intricate, and highly artistic details, creating a masterpiece description."
+    1: "Minimalist technical brief.",
+    2: "Standard prompt enhancement.",
+    3: "Detailed professional architecture.",
+    4: "Hyper-detailed technical specification with deep anatomy and lighting locks.",
+    5: "Ultimate precision: Complex layered environment, skeletal locks, and specific material fidelity."
   };
   return descriptions[power] || descriptions[3];
 };
 
-const Z_IMAGE_MASTER_PROMPT = `
-# Role: Z-Image Turbo Master Architect
-You are an AI specialist designed to convert simple user ideas into high-performance, structured prompts for the Z-Image (S3-DiT) diffusion model.
+const MASTER_ARCHITECTURE_INSTRUCTION = `
+# Role: Precision AI Prompt Architect (High-Fidelity Mode)
+Transform simple user ideas into massive, technical, and hyper-detailed generation briefs.
 
-# Model Intelligence (Z-Image Specifics)
-- Z-Image is a single-stream transformer. It follows instructions exceptionally well.
-- IMPORTANT: It does NOT use Classifier-Free Guidance (CFG) effectively in its Turbo version. 
-- DO NOT use a "negative prompt" box/field for exclusions. 
-- All exclusions (e.g., "no watermarks") MUST be written as positive instructions at the end of the prompt.
-- The model prefers long, descriptive prompts (80-200 words) in natural language.
+# Core Directive:
+- SUBJECT: Use extreme anatomical detail. If a character reference is provided, lock their physical proportions and bust/torso volume.
+- ANATOMY CONSTRAINTS: Explicitly forbid "anatomy normalization". Ensure the model preserves prominent or non-average features.
+- POSE & SKELETAL LOCK: Describe exact limb placement and torso torque in skeletal terms.
+- CONTROLNET: Suggest OpenPose and MiDaS (Depth) weights.
+- CAMERA: Use real lens terminology (50mm, 85mm, anamorphic depth).
+- Z-IMAGE RULE: For the cohesive text output, never use "no". Use "without", "free from", "excluding".
 
-# Output Structural Scaffold (MANDATORY FOR Z-IMAGE)
-For z-image, generate a single, cohesive paragraph following this sequence:
-1. [Shot Type & Subject]: e.g., "A wide-angle full-body shot of a young adult..."
-2. [Physical Appearance]: Detailed age, hair, skin, and expression. Always include "adult" for human subjects.
-3. [Clothing & Modesty]: Explicitly describe fabric, fit, and coverage (to ensure safety).
-4. [Environment & Background]: Specific setting, level of detail, and depth of field.
-5. [Lighting]: Cinematic, diffused, rim-lighting, etc.
-6. [Technical Specs]: Lens type (e.g., 50mm, 85mm), medium (e.g., realistic photography, oil painting).
-7. [Constraints Clause]: A final section starting with "Constraints:" that lists things to avoid (no text, no watermark, no extra limbs, no logos).
+# CRITICAL FORMATTING RULE:
+DO NOT start any description or field with the name of the target model (e.g., DO NOT write "Nanobanana:", "Midjourney:", "Flux prompt:"). 
+Start the "description" fields directly with the content. No headers, no labels, no prefixes inside the JSON values.
 
-# Style Guidelines
-- Use natural language, not tag clouds.
-- Avoid "poetic" fluff; use descriptive, concrete nouns and adjectives.
-- If the user's request is vague, expand it into a rich, high-quality scene.
+# Output Requirement:
+You MUST follow the provided JSON schema exactly. Every field should be populated with rich, evocative, and technically accurate strings.
 `;
-
-const LTX2_MASTER_PROMPT = `
-# Role: LTX2 Cinematic Director
-You are the "LTX2 Cinematic Director," a specialized AI agent that transforms user concepts into high-fidelity, spatio-temporal instructions for the LTX2 video model.
-
-# Model Intelligence: LTX2 (S3-DiT)
-- LTX2 generates Video AND Audio simultaneously.
-- It interprets prompts as "temporal evolution." 
-- For Image-to-Video (I2V) with Start/End frames, the prompt must bridge the gap between Frame A and Frame B.
-- It weighs concrete verbs and cinematography terms over "vibe" adjectives.
-
-# Prompting Principles
-1. [Shot & Atmosphere]: Establish the lens and lighting (e.g., "35mm anamorphic, golden hour").
-2. [The Subject Action]: Use present-tense, physically measurable verbs (e.g., "leans," "rotates," "accelerates").
-3. [Camera Choreography]: Define the path—Dolly, Pan, Tilt, Orbit, or Crane.
-4. [Environmental Dynamics]: Describe secondary motion (e.g., "dust motes dance," "wind ripples the fabric").
-5. [Audio Layer]: Describe the soundscape (e.g., "the low hum of an engine," "crunching gravel").
-6. [Temporal Guardrails]: Use keywords like "natural motion blur," "180-degree shutter," and "50fps feel."
-
-# Context Handling: Start & End Images
-If the user provides both a Start Image and an End Image, your prompt MUST focus on the TRANSITION:
-- "The subject begins in the pose of the first frame and smoothly evolves into the position of the second frame."
-- "The camera moves from [Position A] to [Position B] to match the frame perspectives."
-
-# Output Format
-Provide a single, continuous paragraph (no bullet points). LTX2 understands flowing narratives better than lists.
-`;
-
-const REVERSE_PROMPT_SYSTEM_INSTRUCTION = `
-# Role: Image Interrogator & Reverse Prompt Engineer
-Analyze the provided image with extreme precision to reverse-engineer a prompt that could recreate it.
-Focus on:
-1. Subject details (physique, clothing, expressions).
-2. Lighting (direction, color, intensity).
-3. Composition (shot type, angle, depth of field).
-4. Artistic style (medium, textures, period, influences).
-5. Technical parameters (lens, film stock, lighting rig).
-
-If user context is provided, prioritize it while maintaining the visual fidelity of the image.
-Output must be in the structured JSON format provided.
-`;
-
-const fileToGenerativePart = (base64Data: string) => {
-  return {
-    inlineData: {
-      data: base64Data.split(',')[1],
-      mimeType: base64Data.substring(base64Data.indexOf(':') + 1, base64Data.indexOf(';')),
-    },
-  };
-};
 
 const IMAGE_PROMPT_SCHEMA = {
   type: Type.OBJECT,
@@ -106,95 +49,136 @@ const IMAGE_PROMPT_SCHEMA = {
     prompt: {
       type: Type.OBJECT,
       properties: {
-        core: {
+        subject: {
           type: Type.OBJECT,
           properties: {
-            subject: { type: Type.STRING, description: "Main subject description" },
-            concept: { type: Type.STRING, description: "The overarching concept or action" }
-          }
+            description: { type: Type.STRING },
+            anatomy_constraints: { type: Type.STRING }
+          },
+          required: ["description", "anatomy_constraints"]
         },
-        style: {
+        pose: {
           type: Type.OBJECT,
           properties: {
-            primary: { type: Type.STRING },
-            secondary: { type: Type.STRING },
-            mood: { type: Type.STRING },
-            artistic_influence: { type: Type.STRING }
-          }
+            description: { type: Type.STRING },
+            skeletal_lock: { type: Type.STRING }
+          },
+          required: ["description", "skeletal_lock"]
         },
-        technical: {
+        environment: {
           type: Type.OBJECT,
           properties: {
-            camera: {
+            setting: { type: Type.STRING },
+            elements: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["setting", "elements"]
+        },
+        camera: {
+          type: Type.OBJECT,
+          properties: {
+            shot_type: { type: Type.STRING },
+            perspective: { type: Type.STRING },
+            focal_length: { type: Type.STRING },
+            depth_of_field: { type: Type.STRING },
+            framing: { type: Type.STRING }
+          },
+          required: ["shot_type", "perspective", "focal_length", "depth_of_field", "framing"]
+        },
+        lighting: {
+          type: Type.OBJECT,
+          properties: {
+            type: { type: Type.STRING },
+            direction: { type: Type.STRING },
+            quality: { type: Type.STRING },
+            shadows: { type: Type.STRING }
+          },
+          required: ["type", "direction", "quality", "shadows"]
+        },
+        mood_and_expression: {
+          type: Type.OBJECT,
+          properties: {
+            emotion: { type: Type.STRING },
+            facial_features: { type: Type.STRING },
+            atmosphere: { type: Type.STRING }
+          },
+          required: ["emotion", "facial_features", "atmosphere"]
+        },
+        style_and_realism: {
+          type: Type.OBJECT,
+          properties: {
+            style: { type: Type.STRING },
+            fidelity: { type: Type.STRING },
+            skin_texture: { type: Type.STRING }
+          },
+          required: ["style", "fidelity", "skin_texture"]
+        },
+        colors_and_tone: {
+          type: Type.OBJECT,
+          properties: {
+            palette: { type: Type.STRING },
+            contrast: { type: Type.STRING },
+            saturation: { type: Type.STRING }
+          },
+          required: ["palette", "contrast", "saturation"]
+        },
+        quality_and_technical_details: {
+          type: Type.OBJECT,
+          properties: {
+            resolution: { type: Type.STRING },
+            sharpness: { type: Type.STRING },
+            noise: { type: Type.STRING }
+          },
+          required: ["resolution", "sharpness", "noise"]
+        },
+        aspect_ratio_and_output: {
+          type: Type.OBJECT,
+          properties: {
+            ratio: { type: Type.STRING },
+            orientation: { type: Type.STRING }
+          },
+          required: ["ratio", "orientation"]
+        },
+        controlnet: {
+          type: Type.OBJECT,
+          properties: {
+            pose_control: {
               type: Type.OBJECT,
               properties: {
-                shot_type: { type: Type.STRING },
-                angle: { type: Type.STRING },
-                lens: { type: Type.STRING },
-                focus: { type: Type.STRING }
+                model_type: { type: Type.STRING },
+                purpose: { type: Type.STRING },
+                constraints: { type: Type.STRING },
+                recommended_weight: { type: Type.NUMBER }
               }
             },
-            lighting: {
+            depth_control: {
               type: Type.OBJECT,
               properties: {
-                source: { type: Type.STRING },
-                effect: { type: Type.STRING }
-              }
-            },
-            resolution: {
-              type: Type.OBJECT,
-              properties: {
-                quality: { type: Type.STRING },
-                texture: { type: Type.STRING }
+                model_type: { type: Type.STRING },
+                purpose: { type: Type.STRING },
+                constraints: { type: Type.STRING },
+                recommended_weight: { type: Type.NUMBER }
               }
             }
-          }
+          },
+          required: ["pose_control", "depth_control"]
         },
-        scene_setup: {
+        negative_prompt: {
           type: Type.OBJECT,
           properties: {
-            surface: { type: Type.STRING },
-            background: {
-              type: Type.OBJECT,
-              properties: {
-                type: { type: Type.STRING },
-                description: { type: Type.STRING },
-                color: { type: Type.STRING }
-              }
-            },
-            props: { type: Type.STRING }
-          }
-        },
-        modifications: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              target_area: { type: Type.STRING },
-              action: { type: Type.STRING },
-              details: {
-                type: Type.OBJECT,
-                properties: {
-                  materials: { type: Type.STRING },
-                  architectural_translation: { type: Type.STRING }
-                }
-              }
-            }
-          }
-        },
-        quality: {
-          type: Type.OBJECT,
-          properties: {
-            positive_keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-            negative_prompt: { type: Type.STRING }
-          }
+            forbidden_content: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["forbidden_content"]
         }
-      }
+      },
+      required: [
+        "subject", "pose", "environment", "camera", "lighting", 
+        "mood_and_expression", "style_and_realism", "colors_and_tone", 
+        "quality_and_technical_details", "aspect_ratio_and_output", 
+        "controlnet", "negative_prompt"
+      ]
     }
   }
 };
-
-// --- IMAGE GENERATION ---
 
 export const generateEnhancedPrompt = async (
   prompt: string,
@@ -205,39 +189,29 @@ export const generateEnhancedPrompt = async (
   compositionReference: string | null,
   power: number
 ): Promise<EnhancedPrompt> => {
-  
   const modelName = getModelName(geminiModel);
   const parts: any[] = [];
-
   if (characterReference) parts.push(fileToGenerativePart(characterReference));
   if (compositionReference) parts.push(fileToGenerativePart(compositionReference));
   
-  let userInstruction = `Enhance this image prompt for ${targetModel}. 
-  User Input: "${prompt}". 
-  Language: ${language === 'ru' ? 'Russian (Output MUST be in English)' : 'English'}.
-  Enhancement Level: ${getPowerDescription(power)}.
+  let userInstruction = `${MASTER_ARCHITECTURE_INSTRUCTION}
   
-  ${targetModel === 'z-image' ? Z_IMAGE_MASTER_PROMPT : ""}
+  TASK: Create a technical generation brief for ${targetModel}.
+  USER INPUT: "${prompt}". 
+  LANGUAGE: Output MUST be in English.
+  ENHANCEMENT POWER: ${getPowerDescription(power)}.
   
-  ${characterReference ? "An image is provided as a Character Reference. Analyze it and incorporate its key features into the 'subject' description." : ""}
-  ${compositionReference ? "An image is provided as a Style/Composition Reference. Analyze it and incorporate its artistic style, angle, and mood into the prompt." : ""}
+  Populate every section of the schema with maximum technical density.
   `;
 
   parts.push({ text: userInstruction });
-
   const result = await ai.models.generateContent({
     model: modelName,
     contents: { parts },
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: IMAGE_PROMPT_SCHEMA
-    }
+    config: { responseMimeType: "application/json", responseSchema: IMAGE_PROMPT_SCHEMA }
   });
-
   return JSON.parse(result.text || "{}");
 };
-
-// --- REVERSE PROMPT ---
 
 export const reversePromptImage = async (
   imageBase64: string,
@@ -248,23 +222,15 @@ export const reversePromptImage = async (
   const modelName = getModelName(geminiModel);
   const parts = [
     fileToGenerativePart(imageBase64),
-    { text: `Reverse-engineer this image for the target model: ${targetModel}. ${context ? `Additional Context: "${context}"` : ""} ${targetModel === 'z-image' ? Z_IMAGE_MASTER_PROMPT : ""}` }
+    { text: `${MASTER_ARCHITECTURE_INSTRUCTION}\nREVERSE INTERROGATION: Deconstruct this image into the 'Perfect' prompt architecture for ${targetModel}. ${context ? `Context: "${context}"` : ""}` }
   ];
-
   const result = await ai.models.generateContent({
     model: modelName,
     contents: { parts },
-    config: {
-      systemInstruction: REVERSE_PROMPT_SYSTEM_INSTRUCTION,
-      responseMimeType: "application/json",
-      responseSchema: IMAGE_PROMPT_SCHEMA
-    }
+    config: { responseMimeType: "application/json", responseSchema: IMAGE_PROMPT_SCHEMA }
   });
-
   return JSON.parse(result.text || "{}");
 };
-
-// --- VIDEO GENERATION ---
 
 export const generateEnhancedVideoPrompt = async (
   prompt: string,
@@ -276,45 +242,29 @@ export const generateEnhancedVideoPrompt = async (
   geminiModel: GeminiModelType,
   power: number
 ): Promise<EnhancedVideoPrompt> => {
-
   const modelName = getModelName(geminiModel);
   const parts: any[] = [];
-
   let inputsDescription = "";
-  
-  if (characterReferencesBase64 && characterReferencesBase64.length > 0) {
+  if (characterReferencesBase64?.length > 0) {
       characterReferencesBase64.forEach((base64, index) => {
         parts.push(fileToGenerativePart(base64));
-        inputsDescription += `Character Reference Image #${index + 1} is provided. `;
+        inputsDescription += `Character Reference Image #${index + 1}. `;
       });
   }
-  if (firstFrameBase64) {
-    parts.push(fileToGenerativePart(firstFrameBase64));
-    inputsDescription += "Start Frame is provided. ";
-  }
-  if (lastFrameBase64) {
-    parts.push(fileToGenerativePart(lastFrameBase64));
-    inputsDescription += "End Frame is provided. ";
-  }
-  if (prompt && prompt.trim()) {
-    inputsDescription += `Text Prompt: "${prompt}". `;
-  } else {
-    inputsDescription += "No text prompt provided, rely on images. ";
-  }
+  if (firstFrameBase64) { parts.push(fileToGenerativePart(firstFrameBase64)); inputsDescription += "Start Frame provided. "; }
+  if (lastFrameBase64) { parts.push(fileToGenerativePart(lastFrameBase64)); inputsDescription += "End Frame provided. "; }
+  if (prompt?.trim()) inputsDescription += `Text Prompt: "${prompt}". `;
 
-  const userInstruction = `Create a single continuous narrative paragraph for video generation using ${targetModel}.
+  const userInstruction = `Act as a Cinematic Director for ${targetModel}. Create a massive, detailed narrative paragraph for video generation.
   Inputs: ${inputsDescription}
-  Language: ${language === 'ru' ? 'Russian (Output MUST be in English)' : 'English'}.
-  Enhancement Level: ${getPowerDescription(power)}.
+  Target: ${targetModel}
+  Enhancement: ${getPowerDescription(power)}
+  Language: English.
   
-  ${targetModel === 'ltx2' ? LTX2_MASTER_PROMPT : `Generate a professional prompt for ${targetModel}. Do not use bullet points or lists. Provide a single, flowing paragraph.`}
-  
-  If Character References are provided: Maintain subject consistency based on their visual traits.
-  If Start/End frames are provided: Focus heavily on the TRANSITION and temporal evolution from Frame A to Frame B.
+  Describe: Temporal flow, subject action in present tense, camera choreography (panning, tracking, zooming), lighting changes over time, and environmental dynamics (particles, weather, movement).
   `;
 
   parts.push({ text: userInstruction });
-
   const result = await ai.models.generateContent({
     model: modelName,
     contents: { parts },
@@ -323,19 +273,15 @@ export const generateEnhancedVideoPrompt = async (
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          full_prompt: { type: Type.STRING, description: "A single, continuous paragraph (no bullet points) describing the entire video scene, action, and technical specs." },
-          audio_description: { type: Type.STRING, description: "A brief description of the soundscape (integrated or separate)." },
-          model_notes: { type: Type.STRING, description: "Any specific model-level technical instructions." }
+          full_prompt: { type: Type.STRING },
+          audio_description: { type: Type.STRING },
+          model_notes: { type: Type.STRING }
         }
       }
     }
   });
-
   return JSON.parse(result.text || "{}");
 };
-
-
-// --- EDIT GENERATION ---
 
 export const generateEnhancedEditPrompt = async (
     prompt: string,
@@ -345,22 +291,15 @@ export const generateEnhancedEditPrompt = async (
     geminiModel: GeminiModelType,
     power: number
 ): Promise<EnhancedEditPrompt> => {
-
     const modelName = getModelName(geminiModel);
     const parts = [
         fileToGenerativePart(imageBase64),
-        {
-            text: `Analyze this image and the user's edit request to generate a precise instruction for an AI image editor like ${targetModel}.
-            User Request: "${prompt}".
-            Language: ${language === 'ru' ? 'Russian (Output MUST be in English)' : 'English'}.
-            Enhancement Level: ${getPowerDescription(power)}.
-            
-            ${targetModel === 'z-image' ? Z_IMAGE_MASTER_PROMPT + "\nNote: Adapt the persona to focus on targeted edits while maintaining the Master Architect style." : ""}
-            
-            Identify the specific area to change. Keep the rest of the image consistent.`
-        }
+        { text: `Analyze the provided image and generate detailed edit instructions for ${targetModel}. 
+        Request: "${prompt}". 
+        Enhancement Level: ${getPowerDescription(power)}.
+        
+        Provide a master prompt for the edited version and a granular breakdown of changes area by area.` }
     ];
-
     const result = await ai.models.generateContent({
         model: modelName,
         contents: { parts },
@@ -369,178 +308,84 @@ export const generateEnhancedEditPrompt = async (
             responseSchema: {
                 type: Type.OBJECT,
                 properties: {
-                    master_prompt: { type: Type.STRING, description: "The single, most effective command string for the AI editor." },
+                    master_prompt: { type: Type.STRING },
                     original_image_analysis: {
                         type: Type.OBJECT,
-                        properties: {
-                            style: { type: Type.STRING },
-                            lighting: { type: Type.STRING },
-                            subject: { type: Type.STRING },
-                            composition: { type: Type.STRING }
-                        }
+                        properties: { style: { type: Type.STRING }, lighting: { type: Type.STRING }, subject: { type: Type.STRING }, composition: { type: Type.STRING } }
                     },
                     requested_changes: {
                         type: Type.ARRAY,
                         items: {
                             type: Type.OBJECT,
-                            properties: {
-                                target_area: { type: Type.STRING },
-                                action: { type: Type.STRING },
-                                detailed_instruction: { type: Type.STRING }
-                            }
+                            properties: { target_area: { type: Type.STRING }, action: { type: Type.STRING }, detailed_instruction: { type: Type.STRING } }
                         }
                     },
                     consistency_keywords: {
                         type: Type.OBJECT,
-                        properties: {
-                            positive: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Elements to strictly preserve" },
-                            negative: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Elements to avoid introducing" }
-                        }
+                        properties: { positive: { type: Type.ARRAY, items: { type: Type.STRING } }, negative: { type: Type.ARRAY, items: { type: Type.STRING } } }
                     }
                 }
             }
         }
     });
-
     return JSON.parse(result.text || "{}");
 };
 
-// --- REFINEMENT & SUPER ENHANCE ---
-
-export const refineEnhancedPrompt = async (
-    currentOutput: EnhancedPrompt,
-    refinementInstruction: string,
-    targetModel: ImageModel,
-    geminiModel: GeminiModelType
-): Promise<EnhancedPrompt> => {
+export const refineEnhancedPrompt = async (currentOutput: EnhancedPrompt, refinementInstruction: string, targetModel: ImageModel, geminiModel: GeminiModelType): Promise<EnhancedPrompt> => {
     const modelName = getModelName(geminiModel);
-    const promptText = `Existing Prompt JSON: ${JSON.stringify(currentOutput)}
-    
-    Refinement Instruction: "${refinementInstruction}"
-    Target Model: ${targetModel}
-    
-    ${targetModel === 'z-image' ? Z_IMAGE_MASTER_PROMPT : ""}
-    
-    Update the JSON to reflect this instruction. Maintain the same schema. Output strictly JSON.`;
-
     const result = await ai.models.generateContent({
         model: modelName,
-        contents: { parts: [{ text: promptText }] },
+        contents: { parts: [{ text: `Current Prompt Data: ${JSON.stringify(currentOutput)}\n\nUSER REQUEST FOR REFINEMENT: "${refinementInstruction}"\n\nApply this refinement while keeping the output detailed and technically rich for ${targetModel}.` }] },
+        config: { responseMimeType: "application/json", responseSchema: IMAGE_PROMPT_SCHEMA }
+    });
+    return JSON.parse(result.text || "{}");
+};
+
+export const refineEnhancedVideoPrompt = async (currentOutput: EnhancedVideoPrompt, refinementInstruction: string, targetModel: VideoModel, geminiModel: GeminiModelType): Promise<EnhancedVideoPrompt> => {
+    const modelName = getModelName(geminiModel);
+    const result = await ai.models.generateContent({
+        model: modelName,
+        contents: { parts: [{ text: `Current Video Brief: ${JSON.stringify(currentOutput)}\n\nREFINEMENT: "${refinementInstruction}"\n\nUpdate the full_prompt to reflect this change.` }] },
         config: { responseMimeType: "application/json" }
     });
-
     return JSON.parse(result.text || "{}");
 };
 
-export const refineEnhancedVideoPrompt = async (
-    currentOutput: EnhancedVideoPrompt,
-    refinementInstruction: string,
-    targetModel: VideoModel,
-    geminiModel: GeminiModelType
-): Promise<EnhancedVideoPrompt> => {
-     const modelName = getModelName(geminiModel);
-     const promptText = `Existing Video Brief JSON: ${JSON.stringify(currentOutput)}
-    
-    Refinement Instruction: "${refinementInstruction}"
-    Target Model: ${targetModel}
-
-    ${targetModel === 'ltx2' ? LTX2_MASTER_PROMPT : ""}
-    
-    Update the JSON to reflect this instruction. Ensure it remains a single continuous paragraph. Output strictly JSON.`;
-
-    const result = await ai.models.generateContent({
-        model: modelName,
-        contents: { parts: [{ text: promptText }] },
-         config: { responseMimeType: "application/json" }
-    });
-
-    return JSON.parse(result.text || "{}");
-};
-
-export const refineEnhancedEditPrompt = async (
-    currentOutput: EnhancedEditPrompt,
-    refinementInstruction: string,
-    targetModel: EditModel,
-    geminiModel: GeminiModelType
-): Promise<EnhancedEditPrompt> => {
+export const refineEnhancedEditPrompt = async (currentOutput: EnhancedEditPrompt, refinementInstruction: string, targetModel: EditModel, geminiModel: GeminiModelType): Promise<EnhancedEditPrompt> => {
     const modelName = getModelName(geminiModel);
-    const promptText = `Existing Edit Plan JSON: ${JSON.stringify(currentOutput)}
-    
-    Refinement Instruction: "${refinementInstruction}"
-    Target Model: ${targetModel}
-
-    ${targetModel === 'z-image' ? Z_IMAGE_MASTER_PROMPT : ""}
-    
-    Update the JSON to reflect this instruction. Maintain the same schema. Output strictly JSON.`;
-
     const result = await ai.models.generateContent({
         model: modelName,
-        contents: { parts: [{ text: promptText }] },
-         config: { responseMimeType: "application/json" }
+        contents: { parts: [{ text: `Current Edit Plan: ${JSON.stringify(currentOutput)}\n\nREFINEMENT: "${refinementInstruction}"` }] },
+        config: { responseMimeType: "application/json" }
     });
-
     return JSON.parse(result.text || "{}");
 };
 
-
-export const superEnhanceVideoPrompt = async (
-    currentOutput: EnhancedVideoPrompt,
-    targetModel: VideoModel,
-    geminiModel: GeminiModelType
-): Promise<EnhancedVideoPrompt> => {
+export const superEnhanceVideoPrompt = async (currentOutput: EnhancedVideoPrompt, targetModel: VideoModel, geminiModel: GeminiModelType): Promise<EnhancedVideoPrompt> => {
      const modelName = getModelName(geminiModel);
-     
-     const promptText = `You are a visionary film director. Take this existing video generation prompt and "Super Enhance" it into a masterpiece narrative.
-     Target Model: ${targetModel}
-     ${targetModel === 'ltx2' ? LTX2_MASTER_PROMPT : ""}
-     
-     Current Prompt: ${JSON.stringify(currentOutput)}
-     
-     Your Goal:
-     1. Deepen the atmosphere and emotional resonance.
-     2. Add extremely specific visual details (textures, micro-movements, lighting nuances).
-     3. Ensure the camera work is sophisticated and cinematic.
-     4. Make it a single, flowing, continuous paragraph.
-     
-     Return the result in the exact same JSON schema.`;
-
      const result = await ai.models.generateContent({
         model: modelName,
-        contents: { parts: [{ text: promptText }] },
-         config: { responseMimeType: "application/json" }
+        contents: { parts: [{ text: `SUPER ENHANCE: Take this video prompt and turn it into an epic, cinematic masterpiece description with extreme detail. JSON: ${JSON.stringify(currentOutput)}` }] },
+        config: { responseMimeType: "application/json" }
     });
-    
     return JSON.parse(result.text || "{}");
 };
 
-
-export const superEnhanceImagePrompt = async (
-    currentOutput: EnhancedPrompt,
-    targetModel: ImageModel,
-    geminiModel: GeminiModelType
-): Promise<EnhancedPrompt> => {
+export const superEnhanceImagePrompt = async (currentOutput: EnhancedPrompt, targetModel: ImageModel, geminiModel: GeminiModelType): Promise<EnhancedPrompt> => {
     const modelName = getModelName(geminiModel);
-    
-    const promptText = `You are a world-class art director. Take this existing image prompt and "Super Enhance" it.
-     Target Model: ${targetModel}
-
-     ${targetModel === 'z-image' ? Z_IMAGE_MASTER_PROMPT : ""}
-     
-     Current Prompt: ${JSON.stringify(currentOutput)}
-     
-     Your Goal:
-     1. Elevate the artistic style to be more distinct and cohesive.
-     2. Add sophisticated lighting and textural details.
-     3. Ensure the composition is dynamic and balanced.
-     4. Push the concept to be more unique while preserving the original subject.
-     
-     Return the result in the exact same JSON schema.`;
-
     const result = await ai.models.generateContent({
         model: modelName,
-        contents: { parts: [{ text: promptText }] },
-        config: { responseMimeType: "application/json" }
+        contents: { parts: [{ text: `SUPER ENHANCE: Take this image prompt and exponentially increase the detail in every field. Think about textures, atmospheric scattering, lighting complexity, and artistic depth. JSON: ${JSON.stringify(currentOutput)}` }] },
+        config: { responseMimeType: "application/json", responseSchema: IMAGE_PROMPT_SCHEMA }
     });
-    
     return JSON.parse(result.text || "{}");
+};
+
+const fileToGenerativePart = (base64Data: string) => {
+  return {
+    inlineData: {
+      data: base64Data.split(',')[1],
+      mimeType: base64Data.substring(base64Data.indexOf(':') + 1, base64Data.indexOf(';')),
+    },
+  };
 };
