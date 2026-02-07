@@ -22,7 +22,7 @@ interface OutputDisplayProps {
 
 const isImagePrompt = (o: any): o is EnhancedPrompt => o && o.prompt && 'subject' in o.prompt;
 const isVideoPrompt = (o: any): o is EnhancedVideoPrompt => o && 'full_prompt' in o;
-const isEditPrompt = (o: any): o is EnhancedEditPrompt => o && 'master_prompt' in o;
+const isEditPrompt = (o: any): o is EnhancedEditPrompt => o && 'edit_task_summary' in o;
 
 const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode; defaultOpen?: boolean }> = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -49,8 +49,11 @@ const Detail: React.FC<{ label: string; value: any }> = ({ label, value }) => {
       <div className="mb-3 last:mb-0 font-mono text-[13px] leading-relaxed">
         <span className="text-indigo-400 mr-2 font-medium capitalize">{label.replace(/_/g, ' ')}:</span>
         {Array.isArray(value) ? (
-          <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {value.map((item, index) => <span key={index} className="px-2 py-0.5 rounded bg-white/[0.07] text-slate-300 text-[11px] border border-white/[0.08]">{item}</span>)}
+          <div className="flex flex-col gap-1.5 mt-1.5 pl-2">
+            {value.map((item, index) => <div key={index} className="text-slate-300 text-[12px] flex items-start gap-2">
+                <span className="text-indigo-500 mt-1">•</span>
+                <span>{item}</span>
+            </div>)}
           </div>
         ) : typeof value === 'object' ? (
           <div className="pl-4 mt-1 border-l border-white/10">
@@ -102,7 +105,6 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
 
   const cleanPrefix = (text: string) => {
       if (!text) return "";
-      // List of potential prefixes to remove
       const prefixes = ["nanobanana", "midjourney", "flux", "z-image", "prompt for", "a prompt"];
       let cleaned = text.trim();
       
@@ -236,21 +238,51 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
   );
 
   const renderEditView = (data: EnhancedEditPrompt) => (
-    <div>
+    <div className="flex flex-col">
        <RefineInput onRefine={onRefine} isRefining={isRefining} />
-       <CollapsibleSection title="Master Command" defaultOpen={true}>
+       
+       <div className="p-4 bg-indigo-500/10 border-b border-white/10">
+            <h2 className="text-sm font-bold text-indigo-100 flex items-center gap-2">
+                <SparklesIcon className="w-4 h-4 text-indigo-400" />
+                {data.edit_task_summary}
+            </h2>
+            <p className="text-[11px] text-slate-400 mt-1 italic leading-snug">
+                {data.transformation_logic}
+            </p>
+       </div>
+
+       <CollapsibleSection title="Enhanced Edit Prompt (Master Command)" defaultOpen={true}>
             <div className="relative group">
-                <button onClick={() => handleCopy(data.master_prompt, 'edit-master')} className="absolute top-0 right-0 p-1.5 bg-zinc-800 rounded opacity-0 group-hover:opacity-100 transition-all z-10">
+                <button onClick={() => handleCopy(data.master_edit_prompt, 'edit-master')} className="absolute top-0 right-0 p-1.5 bg-zinc-800 rounded opacity-0 group-hover:opacity-100 transition-all z-10">
                     {copiedKey === 'edit-master' ? <CheckIcon className="w-3 h-3 text-green-400" /> : <ClipboardIcon className="w-3 h-3" />}
                 </button>
-                <p className="text-slate-300 font-mono text-sm leading-relaxed">{data.master_prompt}</p>
+                <p className="text-slate-300 font-mono text-sm leading-relaxed pr-8">{data.master_edit_prompt}</p>
             </div>
        </CollapsibleSection>
-       <CollapsibleSection title="Analysis">
-            <Detail label="Analysis" value={data.original_image_analysis} />
-            <Detail label="Requested Changes" value={data.requested_changes} />
-            <Detail label="Consistency Keywords" value={data.consistency_keywords} />
+
+       <div className="grid grid-cols-1 md:grid-cols-2 bg-[#0B0D12] border-b border-white/10">
+            <div className="p-4 border-r border-white/10 bg-emerald-500/5">
+                <h3 className="text-[10px] uppercase tracking-widest text-emerald-400 font-bold mb-3">Preservation Locks</h3>
+                <Detail label="" value={data.preservation_locks} />
+            </div>
+            <div className="p-4 bg-amber-500/5">
+                <h3 className="text-[10px] uppercase tracking-widest text-amber-400 font-bold mb-3">Technical Brief</h3>
+                <Detail label="Methods" value={data.technical_params} />
+            </div>
+       </div>
+
+       <CollapsibleSection title="Technical Execution Steps" defaultOpen={true}>
+            <Detail label="Task Steps" value={data.detailed_execution_steps} />
        </CollapsibleSection>
+
+       {data.negative_edit_constraints.length > 0 && (
+            <div className="p-4 bg-red-900/10">
+                <h3 className="text-[10px] uppercase tracking-widest text-red-400/80 font-bold mb-2">Edit Constraints</h3>
+                <div className="bg-black/20 p-3 rounded-lg border border-red-500/10">
+                    <Detail label="Avoid" value={data.negative_edit_constraints} />
+                </div>
+            </div>
+       )}
     </div>
   );
 

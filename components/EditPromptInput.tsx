@@ -1,6 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
+import { ImageIcon } from './icons/ImageIcon';
 import type { EditModel } from '../types';
 
 interface EditPromptInputProps {
@@ -10,6 +11,8 @@ interface EditPromptInputProps {
   setLanguage: (language: 'en' | 'ru') => void;
   sourceImage: string | null;
   setSourceImage: (frame: string | null) => void;
+  references: string[];
+  setReferences: (images: string[] | ((prev: string[]) => string[])) => void;
   editModel: EditModel;
   setEditModel: (model: EditModel) => void;
   enhancementPower: number;
@@ -31,6 +34,128 @@ const powerLabels: { [key: number]: string } = {
   5: 'Max Creative',
 };
 
+const MultiImageDropzone: React.FC<{
+  title: string;
+  subtitle?: string;
+  images: string[];
+  setImages: (update: string[] | ((prev: string[]) => string[])) => void;
+  isLoading: boolean;
+  className?: string;
+}> = ({ title, subtitle, images, setImages, isLoading, className }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleFileChange = (files: FileList | null) => {
+    if (files) {
+      const fileArray = Array.from(files).filter(file => file.type.startsWith('image/'));
+      const newImages: string[] = [];
+      
+      let processedCount = 0;
+      if (fileArray.length === 0) return;
+
+      fileArray.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            newImages.push(e.target.result as string);
+          }
+          processedCount++;
+          if (processedCount === fileArray.length) {
+            setImages(prev => [...prev, ...newImages]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files) {
+      handleFileChange(e.dataTransfer.files);
+    }
+  };
+
+  const removeImage = (indexToRemove: number) => {
+    setImages(prev => prev.filter((_, index) => index !== indexToRemove));
+  };
+
+  return (
+    <div
+      className={`group relative w-full border border-dashed rounded-xl p-3 text-center cursor-pointer transition-all duration-300 flex flex-col items-center min-h-[100px] bg-zinc-900/30 hover:bg-white/[0.04] ${
+        dragActive ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 hover:border-white/30'
+      } ${className}`}
+      onClick={(e) => {
+        if (!(e.target as HTMLElement).closest('button')) {
+            fileInputRef.current?.click();
+        }
+      }}
+      onDragEnter={handleDrag}
+      onDragOver={handleDrag}
+      onDragLeave={handleDrag}
+      onDrop={handleDrop}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFileChange(e.target.files)}
+        disabled={isLoading}
+      />
+      
+      {images.length > 0 ? (
+        <div className="w-full">
+            <div className="flex justify-between items-center mb-2 px-1">
+                <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">{images.length} References</p>
+                <button 
+                    onClick={(e) => { e.stopPropagation(); setImages([]); }}
+                    className="text-[9px] text-red-400 hover:text-red-300 uppercase tracking-tighter font-bold border border-red-500/20 px-1 py-0.5 rounded bg-red-500/5 transition-colors"
+                >
+                    Clear All
+                </button>
+            </div>
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 w-full p-1">
+                {images.map((img, index) => (
+                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 group/img shadow-md">
+                        <img src={img} alt={`Ref ${index}`} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500" />
+                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center z-10" />
+                         <button
+                            onClick={(e) => { e.stopPropagation(); removeImage(index); }}
+                            className="absolute top-1 right-1 bg-red-600/90 text-white rounded-full w-4 h-4 flex items-center justify-center hover:bg-red-500 transition-colors opacity-0 group-hover/img:opacity-100 z-20"
+                         >
+                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                         </button>
+                    </div>
+                ))}
+                <div className="flex flex-col items-center justify-center aspect-square rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-colors group/add">
+                     <span className="text-xl text-slate-500 group-hover/add:text-slate-200">+</span>
+                </div>
+            </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full py-4 text-slate-500 group-hover:text-slate-300 transition-colors relative z-10">
+          <ImageIcon className="w-6 h-6 mb-2 opacity-50" />
+          <p className="font-bold text-[10px] uppercase tracking-widest">{title}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const EditPromptInput: React.FC<EditPromptInputProps> = ({
   prompt,
   setPrompt,
@@ -38,6 +163,8 @@ export const EditPromptInput: React.FC<EditPromptInputProps> = ({
   setLanguage,
   sourceImage,
   setSourceImage,
+  references,
+  setReferences,
   editModel,
   setEditModel,
   enhancementPower,
@@ -79,8 +206,8 @@ export const EditPromptInput: React.FC<EditPromptInputProps> = ({
   };
 
   return (
-    <div className="bg-[#13151C]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-6 h-full ring-1 ring-white/5">
-      <div className="flex items-center justify-between">
+    <div className="bg-[#13151C]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-6 h-full ring-1 ring-white/5 overflow-y-auto custom-scrollbar">
+      <div className="flex items-center justify-between flex-shrink-0">
          <h2 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Edit Configuration</h2>
          <select
             value={language}
@@ -92,43 +219,60 @@ export const EditPromptInput: React.FC<EditPromptInputProps> = ({
           </select>
       </div>
 
-      <div 
-        className={`group relative border border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-300 bg-zinc-900/30 hover:bg-white/[0.04] ${
-            dragActive ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 hover:border-white/30'
-        }`}
-        onClick={() => fileInputRef.current?.click()}
-        onDragEnter={handleDrag}
-        onDragOver={handleDrag}
-        onDragLeave={handleDrag}
-        onDrop={handleDrop}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => handleFileChange(e.target.files)}
-          disabled={isLoading}
-        />
-        {sourceImage ? (
-          <>
-             <img src={sourceImage} alt="Image to edit preview" className="mx-auto max-h-40 rounded-lg shadow-lg" />
-              <button
-                onClick={(e) => { e.stopPropagation(); setSourceImage(null); }}
-                className="absolute top-2 right-2 bg-zinc-800 text-white rounded-full w-6 h-6 flex items-center justify-center border border-zinc-600 shadow-md hover:bg-red-500 transition-colors"
-              >
-                &times;
-              </button>
-          </>
-        ) : (
-          <p className="text-slate-500 text-sm py-8 group-hover:text-slate-300">
-            {dragActive ? 'Drop image here' : 'Click or drag & drop an image to edit'}
-          </p>
-        )}
+      <div className="flex flex-col gap-4 flex-shrink-0">
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold ml-1">Primary Source Image</span>
+            <div 
+                className={`group relative border border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-300 bg-zinc-900/30 hover:bg-white/[0.04] h-40 flex items-center justify-center ${
+                    dragActive ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 hover:border-white/30'
+                }`}
+                onClick={() => fileInputRef.current?.click()}
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={handleDrop}
+            >
+                <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleFileChange(e.target.files)}
+                disabled={isLoading}
+                />
+                {sourceImage ? (
+                <>
+                    <img src={sourceImage} alt="Image to edit preview" className="mx-auto max-h-full rounded-lg shadow-lg object-contain" />
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setSourceImage(null); }}
+                        className="absolute top-2 right-2 bg-zinc-800 text-white rounded-full w-6 h-6 flex items-center justify-center border border-zinc-600 shadow-md hover:bg-red-500 transition-colors"
+                    >
+                        &times;
+                    </button>
+                </>
+                ) : (
+                <div className="flex flex-col items-center gap-2">
+                    <ImageIcon className="w-6 h-6 text-slate-600 opacity-50" />
+                    <p className="text-slate-500 text-[11px] font-bold uppercase tracking-widest">
+                        {dragActive ? 'Drop source' : 'Upload Primary Source'}
+                    </p>
+                </div>
+                )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold ml-1">Additional Reference Images</span>
+            <MultiImageDropzone 
+                title="Style/Character Refs"
+                images={references}
+                setImages={setReferences}
+                isLoading={isLoading}
+            />
+          </div>
       </div>
 
-      <div className="space-y-4">
-        {/* Enhancement Power Slider */}
+      <div className="space-y-4 flex-shrink-0">
         <div className="space-y-2">
             <div className="flex justify-between text-xs font-medium">
                 <label className="text-slate-400">Edit Intensity</label>

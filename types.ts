@@ -5,7 +5,7 @@ export type VideoModel = 'veo' | 'ltx2' | 'grok';
 export type EditModel = 'nanobanana' | 'z-image';
 export type GeminiModelType = 'gemini-3-flash' | 'gemini-3-pro';
 
-// --- IMAGE PROMPT TYPES (New PERFECT Schema) ---
+// --- IMAGE PROMPT TYPES ---
 
 export interface PromptSubject {
   description: string;
@@ -109,31 +109,20 @@ export interface EnhancedVideoPrompt {
   model_notes?: string;
 }
 
-// --- EDIT PROMPT TYPES ---
-
-interface OriginalImageAnalysis {
-  style: string;
-  lighting: string;
-  subject: string;
-  composition: string;
-}
-
-interface RequestedChange {
-  target_area: string;
-  action: string;
-  detailed_instruction: string;
-}
-
-interface ConsistencyKeywords {
-  positive: string[];
-  negative: string[];
-}
+// --- EDIT PROMPT TYPES (Refocused on "Task/Assignment") ---
 
 export interface EnhancedEditPrompt {
-  master_prompt: string;
-  original_image_analysis: OriginalImageAnalysis;
-  requested_changes: RequestedChange[];
-  consistency_keywords: ConsistencyKeywords;
+  edit_task_summary: string;           // Concise title of the edit assignment
+  transformation_logic: string;       // How the original image is converted to the target
+  detailed_execution_steps: string[]; // Technical step-by-step for the editor/AI
+  preservation_locks: string[];       // What MUST NOT change (facials, lighting, background)
+  master_edit_prompt: string;         // The final enhanced prompt string for editing
+  negative_edit_constraints: string[]; // What to avoid adding or changing
+  technical_params: {
+      inpaint_method: string;
+      denoising_target: string;
+      consistency_weight: string;
+  };
 }
 
 export type ViewMode = 'text' | 'json';
@@ -151,8 +140,7 @@ export interface HistoryItemImage extends HistoryItemBase {
   type: 'image';
   model: ImageModel;
   output: EnhancedPrompt;
-  characterReference?: string | null;
-  compositionReference?: string | null;
+  references?: string[];
 }
 
 export interface HistoryItemVideo extends HistoryItemBase {
@@ -169,6 +157,7 @@ export interface HistoryItemEdit extends HistoryItemBase {
   model: EditModel;
   output: EnhancedEditPrompt;
   sourceImage: string;
+  references?: string[];
 }
 
 export type HistoryItem = HistoryItemImage | HistoryItemVideo | HistoryItemEdit;

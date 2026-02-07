@@ -28,7 +28,7 @@ const MASTER_ARCHITECTURE_INSTRUCTION = `
 Transform simple user ideas into massive, technical, and hyper-detailed generation briefs.
 
 # Core Directive:
-- SUBJECT: Use extreme anatomical detail. If a character reference is provided, lock their physical proportions and bust/torso volume.
+- SUBJECT: Use extreme anatomical detail. If multiple references are provided, synthesize their common traits to lock physical proportions and style.
 - ANATOMY CONSTRAINTS: Explicitly forbid "anatomy normalization". Ensure the model preserves prominent or non-average features.
 - POSE & SKELETAL LOCK: Describe exact limb placement and torso torque in skeletal terms.
 - CONTROLNET: Suggest OpenPose and MiDaS (Depth) weights.
@@ -185,14 +185,16 @@ export const generateEnhancedPrompt = async (
   language: 'en' | 'ru',
   targetModel: ImageModel,
   geminiModel: GeminiModelType,
-  characterReference: string | null,
-  compositionReference: string | null,
+  references: string[],
   power: number
 ): Promise<EnhancedPrompt> => {
   const modelName = getModelName(geminiModel);
+  // Using any[] to bypass strict inferred type checks when mixing Part types
   const parts: any[] = [];
-  if (characterReference) parts.push(fileToGenerativePart(characterReference));
-  if (compositionReference) parts.push(fileToGenerativePart(compositionReference));
+  
+  if (references?.length > 0) {
+    references.forEach(ref => parts.push(fileToGenerativePart(ref)));
+  }
   
   let userInstruction = `${MASTER_ARCHITECTURE_INSTRUCTION}
   
@@ -220,7 +222,8 @@ export const reversePromptImage = async (
   geminiModel: GeminiModelType
 ): Promise<EnhancedPrompt> => {
   const modelName = getModelName(geminiModel);
-  const parts = [
+  // Using any[] to allow mixing of inlineData and text parts without type errors
+  const parts: any[] = [
     fileToGenerativePart(imageBase64),
     { text: `${MASTER_ARCHITECTURE_INSTRUCTION}\nREVERSE INTERROGATION: Deconstruct this image into the 'Perfect' prompt architecture for ${targetModel}. ${context ? `Context: "${context}"` : ""}` }
   ];
@@ -243,6 +246,7 @@ export const generateEnhancedVideoPrompt = async (
   power: number
 ): Promise<EnhancedVideoPrompt> => {
   const modelName = getModelName(geminiModel);
+  // Explicitly typing parts as any[] to support multi-modal input parts
   const parts: any[] = [];
   let inputsDescription = "";
   if (characterReferencesBase64?.length > 0) {
@@ -286,20 +290,41 @@ export const generateEnhancedVideoPrompt = async (
 export const generateEnhancedEditPrompt = async (
     prompt: string,
     imageBase64: string,
+    references: string[],
     language: 'en' | 'ru',
     targetModel: EditModel,
     geminiModel: GeminiModelType,
     power: number
 ): Promise<EnhancedEditPrompt> => {
     const modelName = getModelName(geminiModel);
-    const parts = [
-        fileToGenerativePart(imageBase64),
-        { text: `Analyze the provided image and generate detailed edit instructions for ${targetModel}. 
-        Request: "${prompt}". 
-        Enhancement Level: ${getPowerDescription(power)}.
-        
-        Provide a master prompt for the edited version and a granular breakdown of changes area by area.` }
-    ];
+    const parts: any[] = [fileToGenerativePart(imageBase64)];
+    
+    if (references?.length > 0) {
+        references.forEach(ref => parts.push(fileToGenerativePart(ref)));
+    }
+
+    const editSystemInstruction = `
+    # Role: Professional Image Editing Specialist (AI Task Architect)
+    # Task: Create a technical EDIT ASSIGNMENT (Задание на редактирование) based on the user's request.
+    # Logic: 
+    Focus strictly on the TRANSFORMATION of the source image.
+    Identify what stays the same (Locks) and what changes (Steps).
+    This is for an Inpainting or Img2Img workflow.
+    
+    # Guidelines:
+    1. edit_task_summary: A high-level title for the task (e.g., "Atmospheric Background Replacement").
+    2. transformation_logic: Technical explanation of how to alter pixels while maintaining structural integrity.
+    3. detailed_execution_steps: Granular instructions for an AI editor.
+    4. preservation_locks: Critical list of features from the original that MUST be protected from change.
+    5. master_edit_prompt: A cohesive, technical prompt optimized for ${targetModel} edit/inpaint mode.
+    6. technical_params: Recommended values for an editing pipeline.
+    `;
+
+    parts.push({ text: `${editSystemInstruction}
+        User Request: "${prompt}". 
+        Enhancement Power: ${getPowerDescription(power)}.
+        Analyze the primary source image and any references provided to ensure style consistency.` });
+
     const result = await ai.models.generateContent({
         model: modelName,
         contents: { parts },
@@ -308,21 +333,19 @@ export const generateEnhancedEditPrompt = async (
             responseSchema: {
                 type: Type.OBJECT,
                 properties: {
-                    master_prompt: { type: Type.STRING },
-                    original_image_analysis: {
+                    edit_task_summary: { type: Type.STRING },
+                    transformation_logic: { type: Type.STRING },
+                    detailed_execution_steps: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    preservation_locks: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    master_edit_prompt: { type: Type.STRING },
+                    negative_edit_constraints: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    technical_params: {
                         type: Type.OBJECT,
-                        properties: { style: { type: Type.STRING }, lighting: { type: Type.STRING }, subject: { type: Type.STRING }, composition: { type: Type.STRING } }
-                    },
-                    requested_changes: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: { target_area: { type: Type.STRING }, action: { type: Type.STRING }, detailed_instruction: { type: Type.STRING } }
+                        properties: {
+                            inpaint_method: { type: Type.STRING },
+                            denoising_target: { type: Type.STRING },
+                            consistency_weight: { type: Type.STRING }
                         }
-                    },
-                    consistency_keywords: {
-                        type: Type.OBJECT,
-                        properties: { positive: { type: Type.ARRAY, items: { type: Type.STRING } }, negative: { type: Type.ARRAY, items: { type: Type.STRING } } }
                     }
                 }
             }
@@ -381,6 +404,7 @@ export const superEnhanceImagePrompt = async (currentOutput: EnhancedPrompt, tar
     return JSON.parse(result.text || "{}");
 };
 
+// Helper function to convert base64 image strings into the format required by the GenAI SDK
 const fileToGenerativePart = (base64Data: string) => {
   return {
     inlineData: {

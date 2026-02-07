@@ -24,8 +24,7 @@ const App: React.FC = () => {
 
   // Image-specific state
   const [imagePrompt, setImagePrompt] = useState<string>('');
-  const [characterReference, setCharacterReference] = useState<string | null>(null);
-  const [compositionReference, setCompositionReference] = useState<string | null>(null);
+  const [imageReferences, setImageReferences] = useState<string[]>([]);
   const [imageModel, setImageModel] = useState<ImageModel>('midjourney');
   const [imageOutput, setImageOutput] = useState<EnhancedPrompt | null>(null);
   const [isReversePromptOpen, setIsReversePromptOpen] = useState<boolean>(false);
@@ -41,6 +40,7 @@ const App: React.FC = () => {
   // Edit-specific state
   const [editPrompt, setEditPrompt] = useState<string>('');
   const [editImage, setEditImage] = useState<string | null>(null);
+  const [editReferences, setEditReferences] = useState<string[]>([]);
   const [editModel, setEditModel] = useState<EditModel>('nanobanana');
   const [editOutput, setEditOutput] = useState<EnhancedEditPrompt | null>(null);
 
@@ -56,7 +56,7 @@ const App: React.FC = () => {
   };
 
   const handleImageGenerate = useCallback(async () => {
-    if (!imagePrompt.trim() && !characterReference && !compositionReference) {
+    if (!imagePrompt.trim() && imageReferences.length === 0) {
       setError('Please enter a prompt or provide at least one reference image.');
       return;
     }
@@ -64,7 +64,7 @@ const App: React.FC = () => {
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedPrompt(imagePrompt, language, imageModel, geminiModel, characterReference, compositionReference, enhancementPower);
+      const result = await generateEnhancedPrompt(imagePrompt, language, imageModel, geminiModel, imageReferences, enhancementPower);
       setImageOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -73,8 +73,7 @@ const App: React.FC = () => {
         language,
         model: imageModel,
         output: result,
-        characterReference,
-        compositionReference,
+        references: imageReferences,
         enhancementPower,
         geminiModel
       };
@@ -86,7 +85,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [imagePrompt, language, imageModel, geminiModel, characterReference, compositionReference, enhancementPower]);
+  }, [imagePrompt, language, imageModel, geminiModel, imageReferences, enhancementPower]);
 
   const handleReversePrompt = async (imageBase64: string, context: string) => {
     setIsLoading(true);
@@ -117,7 +116,6 @@ const App: React.FC = () => {
   };
 
   const handleVideoGenerate = useCallback(async () => {
-    // Check if at least one input is provided
     if (!firstFrame && !lastFrame && !videoPrompt.trim() && videoCharacterReferences.length === 0) {
       setError('Please provide at least a prompt, a start/end frame, or a character reference.');
       return;
@@ -165,7 +163,7 @@ const App: React.FC = () => {
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedEditPrompt(editPrompt, editImage, language, editModel, geminiModel, enhancementPower);
+      const result = await generateEnhancedEditPrompt(editPrompt, editImage, editReferences, language, editModel, geminiModel, enhancementPower);
       setEditOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -175,6 +173,7 @@ const App: React.FC = () => {
         model: editModel,
         output: result,
         sourceImage: editImage,
+        references: editReferences,
         enhancementPower,
         geminiModel
       };
@@ -186,7 +185,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [editPrompt, editImage, language, editModel, geminiModel, enhancementPower]);
+  }, [editPrompt, editImage, editReferences, language, editModel, geminiModel, enhancementPower]);
 
   const handleRefine = useCallback(async (refinementPrompt: string) => {
     if (!refinementPrompt.trim()) return;
@@ -283,8 +282,7 @@ const App: React.FC = () => {
         setImagePrompt(item.simplePrompt);
         setImageModel(item.model);
         setImageOutput(item.output);
-        setCharacterReference(item.characterReference || null);
-        setCompositionReference(item.compositionReference || null);
+        setImageReferences(item.references || []);
         setVideoOutput(null);
         setEditOutput(null);
     } else if (item.type === 'video') {
@@ -301,6 +299,7 @@ const App: React.FC = () => {
         setEditModel(item.model);
         setEditOutput(item.output);
         setEditImage(item.sourceImage);
+        setEditReferences(item.references || []);
         setImageOutput(null);
         setVideoOutput(null);
     }
@@ -324,7 +323,6 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[#02040a] text-slate-200 font-sans selection:bg-indigo-500/30">
-        {/* Ambient Background Gradients */}
         <div className="fixed inset-0 pointer-events-none z-0">
              <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-900/10 rounded-full blur-[120px]" />
              <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-900/10 rounded-full blur-[120px]" />
@@ -335,7 +333,6 @@ const App: React.FC = () => {
             <Header mode={mode} setMode={setMode} geminiModel={geminiModel} setGeminiModel={setGeminiModel} />
 
             <main className="flex-grow flex flex-col md:flex-row gap-6 pb-6 min-h-0">
-                {/* Left Sidebar - History */}
                 <div className="hidden md:flex flex-col w-64 flex-shrink-0">
                     <HistorySidebar 
                         history={history} 
@@ -345,16 +342,13 @@ const App: React.FC = () => {
                     />
                 </div>
 
-                {/* Center - Input */}
                 <div className="flex-1 min-w-0 flex flex-col h-full">
                    {mode === 'image' && (
                         <PromptInput 
                             prompt={imagePrompt}
                             setPrompt={setImagePrompt}
-                            characterReference={characterReference}
-                            setCharacterReference={setCharacterReference}
-                            compositionReference={compositionReference}
-                            setCompositionReference={setCompositionReference}
+                            references={imageReferences}
+                            setReferences={setImageReferences}
                             language={language}
                             setLanguage={setLanguage}
                             imageModel={imageModel}
@@ -394,6 +388,8 @@ const App: React.FC = () => {
                             setLanguage={setLanguage}
                             sourceImage={editImage}
                             setSourceImage={setEditImage}
+                            references={editReferences}
+                            setReferences={setEditReferences}
                             editModel={editModel}
                             setEditModel={setEditModel}
                             enhancementPower={enhancementPower}
@@ -404,7 +400,6 @@ const App: React.FC = () => {
                    )}
                 </div>
 
-                {/* Right - Output */}
                 <div className="flex-1 min-w-0 flex flex-col h-full">
                     <OutputDisplay 
                         output={currentOutput}
@@ -422,7 +417,6 @@ const App: React.FC = () => {
             </main>
         </div>
 
-        {/* Reverse Prompt Modal */}
         {isReversePromptOpen && (
             <ReversePromptModal 
                 onClose={() => setIsReversePromptOpen(false)}
