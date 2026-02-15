@@ -1,9 +1,8 @@
 
 export type AppMode = 'image' | 'video' | 'edit';
 export type ImageModel = 'midjourney' | 'nanobanana' | 'flux' | 'z-image';
-export type VideoModel = 'veo' | 'ltx2' | 'grok';
+export type VideoModel = 'veo' | 'ltx2' | 'seedance' | 'kling';
 export type EditModel = 'nanobanana' | 'z-image';
-export type GeminiModelType = 'gemini-3-flash' | 'gemini-3-pro';
 
 // --- IMAGE PROMPT TYPES ---
 
@@ -133,7 +132,6 @@ export interface HistoryItemBase {
   simplePrompt: string;
   language: 'en' | 'ru';
   enhancementPower?: number;
-  geminiModel?: GeminiModelType;
 }
 
 export interface HistoryItemImage extends HistoryItemBase {

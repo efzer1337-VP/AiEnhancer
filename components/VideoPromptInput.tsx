@@ -25,8 +25,9 @@ interface VideoPromptInputProps {
 
 const videoModels: { id: VideoModel; name: string }[] = [
   { id: 'veo', name: 'VEO' },
+  { id: 'kling', name: 'Kling 3.0' },
   { id: 'ltx2', name: 'LTX2' },
-  { id: 'grok', name: 'Grok' },
+  { id: 'seedance', name: 'Seedance 2.0' },
 ];
 
 const powerLabels: { [key: number]: string } = {
@@ -327,12 +328,12 @@ export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
 
         <div className="space-y-2">
             <label className="text-xs font-medium text-slate-400">Target Model</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
                 {videoModels.map((model) => (
                     <button
                     key={model.id}
                     onClick={() => setVideoModel(model.id)}
-                    className={`px-2 py-2 text-[10px] uppercase tracking-wide font-semibold rounded-lg border transition-all duration-200 ${
+                    className={`px-1 py-2 text-[9px] uppercase tracking-tight font-bold rounded-lg border transition-all duration-200 ${
                         videoModel === model.id
                         ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-200 shadow-sm'
                         : 'bg-zinc-900/30 border-white/5 text-slate-500 hover:bg-white/[0.05] hover:text-slate-300 hover:border-white/10'

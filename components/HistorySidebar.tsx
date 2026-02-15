@@ -68,15 +68,6 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({ history, activeI
                     <span className="text-[10px] opacity-60 font-mono uppercase tracking-wide">
                         {item.model}
                     </span>
-                    {item.geminiModel && (
-                         <span className={`text-[9px] px-1 py-0.5 rounded border ${
-                            item.geminiModel === 'gemini-3-pro' 
-                                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' 
-                                : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                         }`}>
-                             {item.geminiModel === 'gemini-3-pro' ? 'G 3.0 Pro' : 'G 3.0 Flash'}
-                         </span>
-                    )}
                  </div>
               </div>
             </button>

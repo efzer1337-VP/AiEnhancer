@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { PromptInput } from './components/PromptInput';
 import { VideoPromptInput } from './components/VideoPromptInput';
@@ -8,9 +8,12 @@ import { OutputDisplay } from './components/OutputDisplay';
 import { HistorySidebar } from './components/HistorySidebar';
 import { ReversePromptModal } from './components/ReversePromptModal';
 import { generateEnhancedPrompt, generateEnhancedVideoPrompt, generateEnhancedEditPrompt, refineEnhancedPrompt, refineEnhancedVideoPrompt, refineEnhancedEditPrompt, superEnhanceVideoPrompt, superEnhanceImagePrompt, reversePromptImage } from './services/geminiService';
-import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode, ImageModel, VideoModel, EditModel, HistoryItem, GeminiModelType, AppMode } from './types';
+import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode, ImageModel, VideoModel, EditModel, HistoryItem, AppMode } from './types';
 
 const App: React.FC = () => {
+  // Key state
+  const [hasApiKey, setHasApiKey] = useState<boolean>(false);
+
   // Common state
   const [mode, setMode] = useState<AppMode>('image');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -20,7 +23,6 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('text');
   const [language, setLanguage] = useState<'en' | 'ru'>('en');
   const [enhancementPower, setEnhancementPower] = useState<number>(3);
-  const [geminiModel, setGeminiModel] = useState<GeminiModelType>('gemini-3-pro');
 
   // Image-specific state
   const [imagePrompt, setImagePrompt] = useState<string>('');
@@ -48,6 +50,29 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
 
+  // Check for key on mount
+  useEffect(() => {
+    const checkKey = async () => {
+      try {
+        const selected = await (window as any).aistudio.hasSelectedApiKey();
+        setHasApiKey(selected);
+      } catch (e) {
+        console.warn("Key selection check not available in this environment.");
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleOpenKeySelector = async () => {
+    try {
+      await (window as any).aistudio.openSelectKey();
+      // Assume success to prevent race condition
+      setHasApiKey(true);
+    } catch (e) {
+      setError("Unable to open API key selector. Ensure you are logged into Google AI Studio.");
+    }
+  };
+
   const resetAllOutputs = () => {
     setImageOutput(null);
     setVideoOutput(null);
@@ -64,7 +89,7 @@ const App: React.FC = () => {
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedPrompt(imagePrompt, language, imageModel, geminiModel, imageReferences, enhancementPower);
+      const result = await generateEnhancedPrompt(imagePrompt, language, imageModel, imageReferences, enhancementPower);
       setImageOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -74,18 +99,22 @@ const App: React.FC = () => {
         model: imageModel,
         output: result,
         references: imageReferences,
-        enhancementPower,
-        geminiModel
+        enhancementPower
       };
       setHistory(prev => [newHistoryItem, ...prev]);
       setActiveHistoryId(newHistoryItem.id);
     } catch (e: any) {
       console.error(e);
-      setError(`Failed to generate prompt. ${e.message || 'Please try again.'}`);
+      if (e.message?.includes("Requested entity was not found")) {
+        setHasApiKey(false);
+        setError("API Key or Project not found. Please re-select your key.");
+      } else {
+        setError(`Failed to generate prompt. ${e.message || 'Please try again.'}`);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [imagePrompt, language, imageModel, geminiModel, imageReferences, enhancementPower]);
+  }, [imagePrompt, language, imageModel, imageReferences, enhancementPower]);
 
   const handleReversePrompt = async (imageBase64: string, context: string) => {
     setIsLoading(true);
@@ -93,7 +122,7 @@ const App: React.FC = () => {
     setIsReversePromptOpen(false);
     resetAllOutputs();
     try {
-      const result = await reversePromptImage(imageBase64, context, imageModel, geminiModel);
+      const result = await reversePromptImage(imageBase64, context, imageModel);
       setImageOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -102,8 +131,7 @@ const App: React.FC = () => {
         language,
         model: imageModel,
         output: result,
-        enhancementPower: 3,
-        geminiModel
+        enhancementPower: 3
       };
       setHistory(prev => [newHistoryItem, ...prev]);
       setActiveHistoryId(newHistoryItem.id);
@@ -120,12 +148,11 @@ const App: React.FC = () => {
       setError('Please provide at least a prompt, a start/end frame, or a character reference.');
       return;
     }
-
     setIsLoading(true);
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedVideoPrompt(videoPrompt, firstFrame, lastFrame, videoCharacterReferences, language, videoModel, geminiModel, enhancementPower);
+      const result = await generateEnhancedVideoPrompt(videoPrompt, firstFrame, lastFrame, videoCharacterReferences, language, videoModel, enhancementPower);
       setVideoOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -137,8 +164,7 @@ const App: React.FC = () => {
         firstFrame: firstFrame || null,
         lastFrame: lastFrame || null,
         characterReferences: videoCharacterReferences,
-        enhancementPower,
-        geminiModel
+        enhancementPower
       };
       setHistory(prev => [newHistoryItem, ...prev]);
       setActiveHistoryId(newHistoryItem.id);
@@ -148,7 +174,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [videoPrompt, firstFrame, lastFrame, videoCharacterReferences, language, videoModel, geminiModel, enhancementPower]);
+  }, [videoPrompt, firstFrame, lastFrame, videoCharacterReferences, language, videoModel, enhancementPower]);
   
   const handleEditGenerate = useCallback(async () => {
     if (!editPrompt.trim()) {
@@ -163,7 +189,7 @@ const App: React.FC = () => {
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedEditPrompt(editPrompt, editImage, editReferences, language, editModel, geminiModel, enhancementPower);
+      const result = await generateEnhancedEditPrompt(editPrompt, editImage, editReferences, language, editModel, enhancementPower);
       setEditOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -174,8 +200,7 @@ const App: React.FC = () => {
         output: result,
         sourceImage: editImage,
         references: editReferences,
-        enhancementPower,
-        geminiModel
+        enhancementPower
       };
       setHistory(prev => [newHistoryItem, ...prev]);
       setActiveHistoryId(newHistoryItem.id);
@@ -185,24 +210,23 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [editPrompt, editImage, editReferences, language, editModel, geminiModel, enhancementPower]);
+  }, [editPrompt, editImage, editReferences, language, editModel, enhancementPower]);
 
   const handleRefine = useCallback(async (refinementPrompt: string) => {
     if (!refinementPrompt.trim()) return;
-
     setIsRefining(true);
     setError(null);
 
     try {
       let newOutput;
       if (mode === 'image' && imageOutput) {
-        newOutput = await refineEnhancedPrompt(imageOutput, refinementPrompt, imageModel, geminiModel);
+        newOutput = await refineEnhancedPrompt(imageOutput, refinementPrompt, imageModel);
         setImageOutput(newOutput);
       } else if (mode === 'video' && videoOutput) {
-        newOutput = await refineEnhancedVideoPrompt(videoOutput, refinementPrompt, videoModel, geminiModel);
+        newOutput = await refineEnhancedVideoPrompt(videoOutput, refinementPrompt, videoModel);
         setVideoOutput(newOutput);
       } else if (mode === 'edit' && editOutput) {
-        newOutput = await refineEnhancedEditPrompt(editOutput, refinementPrompt, editModel, geminiModel);
+        newOutput = await refineEnhancedEditPrompt(editOutput, refinementPrompt, editModel);
         setEditOutput(newOutput);
       }
       
@@ -222,17 +246,16 @@ const App: React.FC = () => {
       setIsRefining(false);
     }
 
-  }, [mode, imageOutput, videoOutput, editOutput, imageModel, videoModel, editModel, geminiModel, activeHistoryId]);
+  }, [mode, imageOutput, videoOutput, editOutput, imageModel, videoModel, editModel, activeHistoryId]);
 
   const handleSuperEnhance = useCallback(async () => {
     if ((mode !== 'video' || !videoOutput) && (mode !== 'image' || !imageOutput)) return;
-
     setIsSuperEnhancing(true);
     setError(null);
 
     try {
       if (mode === 'video' && videoOutput) {
-        const newOutput = await superEnhanceVideoPrompt(videoOutput, videoModel, geminiModel);
+        const newOutput = await superEnhanceVideoPrompt(videoOutput, videoModel);
         setVideoOutput(newOutput);
         
         if (activeHistoryId) {
@@ -245,7 +268,7 @@ const App: React.FC = () => {
         }
 
       } else if (mode === 'image' && imageOutput) {
-        const newOutput = await superEnhanceImagePrompt(imageOutput, imageModel, geminiModel);
+        const newOutput = await superEnhanceImagePrompt(imageOutput, imageModel);
         setImageOutput(newOutput);
 
          if (activeHistoryId) {
@@ -264,7 +287,7 @@ const App: React.FC = () => {
     } finally {
       setIsSuperEnhancing(false);
     }
-  }, [mode, videoOutput, imageOutput, videoModel, imageModel, geminiModel, activeHistoryId]);
+  }, [mode, videoOutput, imageOutput, videoModel, imageModel, activeHistoryId]);
 
   const handleHistorySelect = (id: string) => {
     const item = history.find(i => i.id === id);
@@ -276,7 +299,6 @@ const App: React.FC = () => {
     // Restore state from history
     setLanguage(item.language);
     if (item.enhancementPower) setEnhancementPower(item.enhancementPower);
-    if (item.geminiModel) setGeminiModel(item.geminiModel);
 
     if (item.type === 'image') {
         setImagePrompt(item.simplePrompt);
@@ -330,9 +352,26 @@ const App: React.FC = () => {
         </div>
 
         <div className="relative z-10 flex flex-col h-full max-w-[1600px] mx-auto w-full px-4 md:px-6">
-            <Header mode={mode} setMode={setMode} geminiModel={geminiModel} setGeminiModel={setGeminiModel} />
+            <Header 
+              mode={mode} 
+              setMode={setMode}
+              hasApiKey={hasApiKey}
+              onOpenKeySelector={handleOpenKeySelector}
+            />
 
-            <main className="flex-grow flex flex-col md:flex-row gap-6 pb-6 min-h-0">
+            {!hasApiKey && (
+              <div className="px-4 py-2 mt-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-between group animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-indigo-400" />
+                  <p className="text-[11px] text-indigo-300 font-medium tracking-wide">
+                    Using shared rate limits. <button onClick={handleOpenKeySelector} className="underline font-bold hover:text-white transition-colors">Provide your own API Key</button> for higher limits.
+                  </p>
+                </div>
+                <button onClick={handleOpenKeySelector} className="text-[10px] bg-indigo-500 text-white px-2 py-1 rounded-lg font-bold uppercase tracking-tighter hover:bg-indigo-400 transition-colors">Setup Key</button>
+              </div>
+            )}
+
+            <main className="flex-grow flex flex-col md:flex-row gap-6 pb-6 min-h-0 pt-4">
                 <div className="hidden md:flex flex-col w-64 flex-shrink-0">
                     <HistorySidebar 
                         history={history} 
