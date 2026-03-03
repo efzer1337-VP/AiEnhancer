@@ -102,9 +102,53 @@ export interface EnhancedPrompt {
 
 // --- VIDEO PROMPT TYPES ---
 
+export interface VideoSceneSetup {
+  environment: string;
+  time_and_weather: string;
+  atmosphere: string;
+}
+
+export interface VideoSubject {
+  description: string;
+  actions: string;
+  expressions: string;
+  clothing_and_textures: string;
+}
+
+export interface VideoMotion {
+  physics_and_fluidity: string;
+  pacing_and_speed: string;
+  dynamic_elements: string[];
+}
+
+export interface VideoCamera {
+  movement: string;
+  shot_type: string;
+  perspective: string;
+  lens_and_focus: string;
+}
+
+export interface VideoLighting {
+  setup: string;
+  color_grading: string;
+  shadow_play: string;
+}
+
+export interface VideoAudio {
+  sound_design: string;
+  ambient_textures: string;
+  music_mood: string;
+}
+
 export interface EnhancedVideoPrompt {
   full_prompt: string;
-  audio_description?: string;
+  scene_setup: VideoSceneSetup;
+  subjects: VideoSubject[];
+  motion_dynamics: VideoMotion;
+  camera_direction: VideoCamera;
+  lighting_and_color: VideoLighting;
+  audio_direction: VideoAudio;
+  negative_constraints: string[];
   model_notes?: string;
 }
 

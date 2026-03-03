@@ -57,10 +57,11 @@ const KLING_SPECIFIC_INSTRUCTION = `
 # Role: Kling 3.0 Cinema Director
 Specialized in Kling 3.0's structural requirements.
 - FRAMEWORK: [Subject] + [Action] + [Environment] + [Camera].
-- MOTION: Describe intensity and fluidness of movement.
-- COHERENCE: Emphasize physical consistency and temporal logic.
-- CAMERA: Explicitly use "Dolly zoom", "Panning shot", "Tilt", "Crane shot".
-- QUALITY: Include "8K resolution", "hyper-realistic textures", "cinematic lighting".
+- MOTION: Describe intensity and fluidness of movement. Use specific physics terms (inertia, momentum, friction).
+- COHERENCE: Emphasize physical consistency and temporal logic. Describe how light changes as objects move.
+- CAMERA: Explicitly use "Dolly zoom", "Panning shot", "Tilt", "Crane shot", "Handheld shake", "Rack focus".
+- QUALITY: Include "8K resolution", "hyper-realistic textures", "cinematic lighting", "sub-surface scattering", "ray-traced reflections".
+- DETAIL: Every object must have a texture, every movement must have a cause, every light must have a source.
 - OUTPUT: Must be strictly in English.
 `;
 
@@ -163,10 +164,69 @@ const VIDEO_PROMPT_SCHEMA = {
   type: Type.OBJECT,
   properties: {
     full_prompt: { type: Type.STRING },
-    audio_description: { type: Type.STRING },
+    scene_setup: {
+      type: Type.OBJECT,
+      properties: {
+        environment: { type: Type.STRING },
+        time_and_weather: { type: Type.STRING },
+        atmosphere: { type: Type.STRING }
+      },
+      required: ["environment", "time_and_weather", "atmosphere"]
+    },
+    subjects: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          description: { type: Type.STRING },
+          actions: { type: Type.STRING },
+          expressions: { type: Type.STRING },
+          clothing_and_textures: { type: Type.STRING }
+        },
+        required: ["description", "actions", "expressions", "clothing_and_textures"]
+      }
+    },
+    motion_dynamics: {
+      type: Type.OBJECT,
+      properties: {
+        physics_and_fluidity: { type: Type.STRING },
+        pacing_and_speed: { type: Type.STRING },
+        dynamic_elements: { type: Type.ARRAY, items: { type: Type.STRING } }
+      },
+      required: ["physics_and_fluidity", "pacing_and_speed", "dynamic_elements"]
+    },
+    camera_direction: {
+      type: Type.OBJECT,
+      properties: {
+        movement: { type: Type.STRING },
+        shot_type: { type: Type.STRING },
+        perspective: { type: Type.STRING },
+        lens_and_focus: { type: Type.STRING }
+      },
+      required: ["movement", "shot_type", "perspective", "lens_and_focus"]
+    },
+    lighting_and_color: {
+      type: Type.OBJECT,
+      properties: {
+        setup: { type: Type.STRING },
+        color_grading: { type: Type.STRING },
+        shadow_play: { type: Type.STRING }
+      },
+      required: ["setup", "color_grading", "shadow_play"]
+    },
+    audio_direction: {
+      type: Type.OBJECT,
+      properties: {
+        sound_design: { type: Type.STRING },
+        ambient_textures: { type: Type.STRING },
+        music_mood: { type: Type.STRING }
+      },
+      required: ["sound_design", "ambient_textures", "music_mood"]
+    },
+    negative_constraints: { type: Type.ARRAY, items: { type: Type.STRING } },
     model_notes: { type: Type.STRING }
   },
-  required: ["full_prompt"]
+  required: ["full_prompt", "scene_setup", "subjects", "motion_dynamics", "camera_direction", "lighting_and_color", "audio_direction", "negative_constraints"]
 };
 
 const EDIT_SCHEMA = {
@@ -244,7 +304,17 @@ export const generateEnhancedVideoPrompt = async (prompt: string, firstFrameBase
       instruction = "Director's script focus.";
     }
     
-    parts.push({ text: `${instruction}\nTASK: Video generation brief for ${targetModel}.\nENHANCEMENT: ${getPowerDescription(power)}.\nPROMPT: "${prompt}".\nIMPORTANT: OUTPUT MUST BE IN ENGLISH.\nOutput MUST be JSON.` });
+    const detailInstruction = `
+# ULTRA-DETAILED VIDEO ARCHITECTURE DIRECTIVE:
+- SCENE SETUP: Describe the microscopic details of the environment (dust motes, scratches on surfaces, humidity in the air).
+- SUBJECTS: For every subject, describe their micro-expressions, the specific weave of their clothing, and the exact trajectory of their limbs.
+- MOTION DYNAMICS: Describe the secondary motion (hair blowing, clothes rippling, debris flying).
+- CAMERA: Describe the lens artifacts (lens flare, chromatic aberration, grain).
+- LIGHTING: Describe the bounce light, the temperature in Kelvin, and the specific shadows cast by small objects.
+- AUDIO: Describe the layered soundscape (low-frequency hums, sharp transients, spatial positioning).
+`;
+
+    parts.push({ text: `${instruction}\n${detailInstruction}\nTASK: Video generation brief for ${targetModel}.\nENHANCEMENT: ${getPowerDescription(power)}.\nPROMPT: "${prompt}".\nIMPORTANT: OUTPUT MUST BE IN ENGLISH.\nOutput MUST be JSON.` });
     
     const result = await ai.models.generateContent({ 
       model: FLASH_MODEL, 
