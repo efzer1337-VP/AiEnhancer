@@ -24,6 +24,7 @@ interface EditPromptInputProps {
 const editModels: { id: EditModel; name: string }[] = [
   { id: 'nanobanana', name: 'NanoBanana' },
   { id: 'z-image', name: 'Z-Image Edit' },
+  { id: 'flux_klein', name: 'Flux Klein' },
 ];
 
 const powerLabels: { [key: number]: string } = {
@@ -298,7 +299,7 @@ export const EditPromptInput: React.FC<EditPromptInputProps> = ({
       
        <div className="space-y-2">
             <label className="text-xs font-medium text-slate-400">Target Model</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
             {editModels.map((model) => (
                 <button
                 key={model.id}

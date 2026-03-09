@@ -6,11 +6,9 @@ import type { AppMode } from '../types';
 interface HeaderProps {
   mode: AppMode;
   setMode: (mode: AppMode) => void;
-  hasApiKey?: boolean;
-  onOpenKeySelector?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ mode, setMode, hasApiKey, onOpenKeySelector }) => {
+export const Header: React.FC<HeaderProps> = ({ mode, setMode }) => {
   const modes: { id: AppMode; label: string }[] = [
     { id: 'image', label: 'Image Gen' },
     { id: 'video', label: 'Video Gen' },
@@ -52,13 +50,13 @@ export const Header: React.FC<HeaderProps> = ({ mode, setMode, hasApiKey, onOpen
         ))}
       </nav>
       
-      {/* Right Side - Actions & Key Status */}
+      {/* Right Side - Branding Accent */}
       <div className="flex items-center gap-3">
          <div className="flex flex-col items-end gap-1">
-             <div className="flex items-center gap-2 bg-[#13151C] border border-white/10 px-3 py-1.5 rounded-full group hover:border-white/20 transition-all cursor-pointer" onClick={onOpenKeySelector}>
-                <span className={`w-1.5 h-1.5 rounded-full ${hasApiKey ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></span>
-                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest group-hover:text-slate-200">
-                    {hasApiKey ? 'Individual Key' : 'Shared Limits'}
+             <div className="flex items-center gap-2 bg-[#13151C] border border-white/10 px-3 py-1.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">
+                    System Active
                 </span>
              </div>
              <a 
@@ -67,17 +65,10 @@ export const Header: React.FC<HeaderProps> = ({ mode, setMode, hasApiKey, onOpen
                 rel="noopener noreferrer" 
                 className="text-[9px] text-slate-600 hover:text-indigo-400 transition-colors uppercase tracking-tighter flex items-center gap-1 pr-1"
              >
-                Credits & Usage Log
+                Usage Policy
                 <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
              </a>
          </div>
-         <button 
-            onClick={onOpenKeySelector}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shadow-[0_4px_15px_rgba(79,70,229,0.3)] transition-all"
-         >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1 1 21 9z"/></svg>
-            API Key
-         </button>
       </div>
     </header>
   );

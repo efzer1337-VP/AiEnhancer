@@ -1,8 +1,8 @@
 
 export type AppMode = 'image' | 'video' | 'edit';
 export type ImageModel = 'midjourney' | 'nanobanana' | 'flux' | 'z-image';
-export type VideoModel = 'veo' | 'ltx2' | 'seedance' | 'kling';
-export type EditModel = 'nanobanana' | 'z-image';
+export type VideoModel = 'veo' | 'ltx' | 'seedance' | 'kling';
+export type EditModel = 'nanobanana' | 'z-image' | 'flux_klein';
 
 // --- IMAGE PROMPT TYPES ---
 

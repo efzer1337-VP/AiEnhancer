@@ -26,7 +26,7 @@ interface VideoPromptInputProps {
 const videoModels: { id: VideoModel; name: string }[] = [
   { id: 'veo', name: 'VEO' },
   { id: 'kling', name: 'Kling 3.0' },
-  { id: 'ltx2', name: 'LTX2' },
+  { id: 'ltx', name: 'LTX' },
   { id: 'seedance', name: 'Seedance 2.0' },
 ];
 
@@ -134,9 +134,11 @@ const MultiImageDropzone: React.FC<{
   const handleFileChange = (files: FileList | null) => {
     if (files) {
       const newImages: string[] = [];
-      const fileArray = Array.from(files);
+      const fileArray = Array.from(files).filter(file => file.type.startsWith('image/'));
       
       let processedCount = 0;
+      if (fileArray.length === 0) return;
+
       fileArray.forEach(file => {
         const reader = new FileReader();
         reader.onload = (e) => {

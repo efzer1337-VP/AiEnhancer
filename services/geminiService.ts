@@ -17,9 +17,11 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1500): Pr
     return await fn();
   } catch (error: any) {
     const errorMsg = error.message || "";
-    const isRetryable = errorMsg.includes('503') || 
+    const isRetryable = errorMsg.includes('500') ||
+                        errorMsg.includes('503') || 
                         errorMsg.includes('Deadline expired') || 
                         errorMsg.includes('UNAVAILABLE') ||
+                        error.status === 500 ||
                         error.status === 503;
     
     if (retries > 0 && isRetryable) {
@@ -83,6 +85,40 @@ const SEEDANCE_SPECIFIC_INSTRUCTION = `
 
 # Directive:
 Output MUST be a single, cohesive, massive paragraph in English that weaves these 6 elements into a seamless cinematic script.
+`;
+
+const LTX_SPECIFIC_INSTRUCTION = `
+# Role: LTX-Video Cinematic Visionary
+# Specialized Structure for LTX-Video:
+The output MUST be a single, comprehensive, and highly detailed narrative paragraph. 
+Do NOT break the description into bullet points or separate categories within the text. 
+Focus on a fluid, cinematic flow that describes the subject, action, environment, lighting, and camera movement in one continuous stream of prose.
+
+# Directive:
+- The "full_prompt" field in the JSON response MUST contain this entire long-form narrative (at least 150-200 words).
+- Focus on temporal consistency and physical realism.
+- Describe how the scene evolves over time.
+- Output MUST be in English.
+`;
+
+const FLUX_KLEIN_SPECIFIC_INSTRUCTION = `
+# Role: FLUX.2 [klein] Narrative Prompt Architect
+# Specialized Structure for FLUX.2 [klein]:
+1. NARRATIVE PROSE: Write like a novelist. Use descriptive, evocative language rather than just keywords.
+2. LIGHTING MASTERY: This is the most critical element. Specify:
+   - Source (natural, artificial, ambient)
+   - Quality (soft, harsh, diffused, direct)
+   - Direction (side, back, overhead, fill)
+   - Temperature (warm, cool, golden, blue)
+   - Interaction (how it catches, filters, or reflects on surfaces)
+3. WORD ORDER: Place the most important elements at the beginning of the prompt.
+4. STYLE & MOOD ANNOTATIONS: End the prompt with explicit Style and Mood tags (e.g., "Style: [Style description]. Mood: [Mood description].").
+5. TECHNICAL PRECISION: Mention camera settings (e.g., "Shot on 35mm film (Kodak Portra 400) with shallow depth of field").
+
+# Image Editing Directive:
+- Describe the transformation in a narrative way.
+- Maintain consistency with the original image's lighting and style unless explicitly asked to change them.
+- For multi-reference editing, weave elements from all references into a single cohesive scene description.
 `;
 
 const IMAGE_PROMPT_SCHEMA = {
@@ -300,6 +336,8 @@ export const generateEnhancedVideoPrompt = async (prompt: string, firstFrameBase
       instruction = KLING_SPECIFIC_INSTRUCTION;
     } else if (targetModel === 'seedance') {
       instruction = SEEDANCE_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'ltx') {
+      instruction = LTX_SPECIFIC_INSTRUCTION;
     } else {
       instruction = "Director's script focus.";
     }
@@ -334,7 +372,13 @@ export const generateEnhancedEditPrompt = async (prompt: string, imageBase64: st
       const parts: any[] = [fileToGenerativePart(imageBase64)];
       if (references?.length > 0) { references.forEach(ref => parts.push(fileToGenerativePart(ref))); }
 
+      let specificInstruction = "";
+      if (targetModel === 'flux_klein') {
+          specificInstruction = FLUX_KLEIN_SPECIFIC_INSTRUCTION;
+      }
+
       parts.push({ text: `
+      ${specificInstruction}
       # ROLE: Technical Edit Assignment Architect.
       # TASK: Produce a technical assignment ("Задание на редактирование") for ${targetModel}.
       # INPUT: "${prompt}". 
@@ -372,9 +416,17 @@ export const refineEnhancedPrompt = async (currentOutput: EnhancedPrompt, refine
 export const refineEnhancedVideoPrompt = async (currentOutput: EnhancedVideoPrompt, refinementInstruction: string, targetModel: VideoModel): Promise<EnhancedVideoPrompt> => {
     return withRetry(async () => {
       const ai = getAIClient();
+      let specificInstruction = "";
+      if (targetModel === 'kling') {
+        specificInstruction = KLING_SPECIFIC_INSTRUCTION;
+      } else if (targetModel === 'seedance') {
+        specificInstruction = SEEDANCE_SPECIFIC_INSTRUCTION;
+      } else if (targetModel === 'ltx') {
+        specificInstruction = LTX_SPECIFIC_INSTRUCTION;
+      }
       const result = await ai.models.generateContent({
           model: FLASH_MODEL,
-          contents: { parts: [{ text: `Current Video Brief: ${JSON.stringify(currentOutput)}\nREFINE: "${refinementInstruction}". Return updated JSON. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
+          contents: { parts: [{ text: `${specificInstruction}\nCurrent Video Brief: ${JSON.stringify(currentOutput)}\nREFINE: "${refinementInstruction}". Return updated JSON. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
           config: { 
               responseMimeType: "application/json", 
               responseSchema: VIDEO_PROMPT_SCHEMA
@@ -387,9 +439,13 @@ export const refineEnhancedVideoPrompt = async (currentOutput: EnhancedVideoProm
 export const refineEnhancedEditPrompt = async (currentOutput: EnhancedEditPrompt, refinementInstruction: string, targetModel: EditModel): Promise<EnhancedEditPrompt> => {
     return withRetry(async () => {
       const ai = getAIClient();
+      let specificInstruction = "";
+      if (targetModel === 'flux_klein') {
+          specificInstruction = FLUX_KLEIN_SPECIFIC_INSTRUCTION;
+      }
       const result = await ai.models.generateContent({
           model: FLASH_MODEL,
-          contents: { parts: [{ text: `Current Edit Task: ${JSON.stringify(currentOutput)}\nREFINEMENT REQUEST: "${refinementInstruction}". IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
+          contents: { parts: [{ text: `${specificInstruction}\nCurrent Edit Task: ${JSON.stringify(currentOutput)}\nREFINEMENT REQUEST: "${refinementInstruction}". IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
           config: { 
               responseMimeType: "application/json", 
               responseSchema: EDIT_SCHEMA

@@ -156,7 +156,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
   const renderVideoView = (data: EnhancedVideoPrompt) => (
     <div className="flex flex-col h-full">
       <RefineInput onRefine={onRefine} isRefining={isRefining} />
-      <CollapsibleSection title="Master Cinematic Prompt" defaultOpen={true}>
+      <CollapsibleSection title={targetModel === 'ltx' ? "Final LTX Prompt" : "Master Cinematic Prompt"} defaultOpen={true}>
         <div className="relative group">
           <button 
             onClick={() => handleCopy(data.full_prompt, 'video-full')} 
@@ -168,65 +168,69 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
         </div>
       </CollapsibleSection>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 bg-[#0B0D12] border-b border-white/10">
-        <div className="p-4 border-r border-white/10 bg-indigo-500/5">
-          <h3 className="text-[10px] uppercase text-indigo-400 font-bold mb-3">Scene & Atmosphere</h3>
-          <Detail label="Environment" value={data.scene_setup.environment} />
-          <Detail label="Time/Weather" value={data.scene_setup.time_and_weather} />
-          <Detail label="Atmosphere" value={data.scene_setup.atmosphere} />
-        </div>
-        <div className="p-4 bg-emerald-500/5">
-          <h3 className="text-[10px] uppercase text-emerald-400 font-bold mb-3">Motion Dynamics</h3>
-          <Detail label="Physics" value={data.motion_dynamics.physics_and_fluidity} />
-          <Detail label="Pacing" value={data.motion_dynamics.pacing_and_speed} />
-          <Detail label="Dynamic Elements" value={data.motion_dynamics.dynamic_elements} />
-        </div>
-      </div>
+      {targetModel !== 'ltx' && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 bg-[#0B0D12] border-b border-white/10">
+            <div className="p-4 border-r border-white/10 bg-indigo-500/5">
+              <h3 className="text-[10px] uppercase text-indigo-400 font-bold mb-3">Scene & Atmosphere</h3>
+              <Detail label="Environment" value={data.scene_setup.environment} />
+              <Detail label="Time/Weather" value={data.scene_setup.time_and_weather} />
+              <Detail label="Atmosphere" value={data.scene_setup.atmosphere} />
+            </div>
+            <div className="p-4 bg-emerald-500/5">
+              <h3 className="text-[10px] uppercase text-emerald-400 font-bold mb-3">Motion Dynamics</h3>
+              <Detail label="Physics" value={data.motion_dynamics.physics_and_fluidity} />
+              <Detail label="Pacing" value={data.motion_dynamics.pacing_and_speed} />
+              <Detail label="Dynamic Elements" value={data.motion_dynamics.dynamic_elements} />
+            </div>
+          </div>
 
-      <CollapsibleSection title="Subject Details" defaultOpen={false}>
-        {data.subjects.map((subject, idx) => (
-          <div key={idx} className="mb-6 last:mb-0 pb-6 last:pb-0 border-b last:border-0 border-white/5">
-            <h4 className="text-[11px] text-indigo-300 font-bold mb-2 uppercase tracking-tighter">Subject #{idx + 1}</h4>
-            <Detail label="Description" value={subject.description} />
-            <Detail label="Actions" value={subject.actions} />
-            <Detail label="Expressions" value={subject.expressions} />
-            <Detail label="Textures" value={subject.clothing_and_textures} />
-          </div>
-        ))}
-      </CollapsibleSection>
+          <CollapsibleSection title="Subject Details" defaultOpen={false}>
+            {data.subjects.map((subject, idx) => (
+              <div key={idx} className="mb-6 last:mb-0 pb-6 last:pb-0 border-b last:border-0 border-white/5">
+                <h4 className="text-[11px] text-indigo-300 font-bold mb-2 uppercase tracking-tighter">Subject #{idx + 1}</h4>
+                <Detail label="Description" value={subject.description} />
+                <Detail label="Actions" value={subject.actions} />
+                <Detail label="Expressions" value={subject.expressions} />
+                <Detail label="Textures" value={subject.clothing_and_textures} />
+              </div>
+            ))}
+          </CollapsibleSection>
 
-      <CollapsibleSection title="Technical Direction">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h4 className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Camera</h4>
-            <Detail label="Movement" value={data.camera_direction.movement} />
-            <Detail label="Shot Type" value={data.camera_direction.shot_type} />
-            <Detail label="Perspective" value={data.camera_direction.perspective} />
-            <Detail label="Lens/Focus" value={data.camera_direction.lens_and_focus} />
-          </div>
-          <div>
-            <h4 className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Lighting & Color</h4>
-            <Detail label="Setup" value={data.lighting_and_color.setup} />
-            <Detail label="Grading" value={data.lighting_and_color.color_grading} />
-            <Detail label="Shadows" value={data.lighting_and_color.shadow_play} />
-          </div>
-        </div>
-      </CollapsibleSection>
+          <CollapsibleSection title="Technical Direction">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Camera</h4>
+                <Detail label="Movement" value={data.camera_direction.movement} />
+                <Detail label="Shot Type" value={data.camera_direction.shot_type} />
+                <Detail label="Perspective" value={data.camera_direction.perspective} />
+                <Detail label="Lens/Focus" value={data.camera_direction.lens_and_focus} />
+              </div>
+              <div>
+                <h4 className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Lighting & Color</h4>
+                <Detail label="Setup" value={data.lighting_and_color.setup} />
+                <Detail label="Grading" value={data.lighting_and_color.color_grading} />
+                <Detail label="Shadows" value={data.lighting_and_color.shadow_play} />
+              </div>
+            </div>
+          </CollapsibleSection>
 
-      <CollapsibleSection title="Audio & Negative Constraints">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h4 className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Audio Direction</h4>
-            <Detail label="Sound Design" value={data.audio_direction.sound_design} />
-            <Detail label="Ambient" value={data.audio_direction.ambient_textures} />
-            <Detail label="Music" value={data.audio_direction.music_mood} />
-          </div>
-          <div>
-            <h4 className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Negative Constraints</h4>
-            <Detail label="Avoid" value={data.negative_constraints} />
-          </div>
-        </div>
-      </CollapsibleSection>
+          <CollapsibleSection title="Audio & Negative Constraints">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Audio Direction</h4>
+                <Detail label="Sound Design" value={data.audio_direction.sound_design} />
+                <Detail label="Ambient" value={data.audio_direction.ambient_textures} />
+                <Detail label="Music" value={data.audio_direction.music_mood} />
+              </div>
+              <div>
+                <h4 className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Negative Constraints</h4>
+                <Detail label="Avoid" value={data.negative_constraints} />
+              </div>
+            </div>
+          </CollapsibleSection>
+        </>
+      )}
       
       {data.model_notes && (
         <div className="p-4 bg-black/40 border-t border-white/5">

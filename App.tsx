@@ -11,9 +11,6 @@ import { generateEnhancedPrompt, generateEnhancedVideoPrompt, generateEnhancedEd
 import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode, ImageModel, VideoModel, EditModel, HistoryItem, AppMode } from './types';
 
 const App: React.FC = () => {
-  // Key state
-  const [hasApiKey, setHasApiKey] = useState<boolean>(false);
-
   // Common state
   const [mode, setMode] = useState<AppMode>('image');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -47,31 +44,53 @@ const App: React.FC = () => {
   const [editOutput, setEditOutput] = useState<EnhancedEditPrompt | null>(null);
 
   // History state
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('prompt_enhancer_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to load history from localStorage", e);
+      return [];
+    }
+  });
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
 
-  // Check for key on mount
+  // Persist history to localStorage
   useEffect(() => {
-    const checkKey = async () => {
-      try {
-        const selected = await (window as any).aistudio.hasSelectedApiKey();
-        setHasApiKey(selected);
-      } catch (e) {
-        console.warn("Key selection check not available in this environment.");
-      }
-    };
-    checkKey();
-  }, []);
-
-  const handleOpenKeySelector = async () => {
     try {
-      await (window as any).aistudio.openSelectKey();
-      // Assume success to prevent race condition
-      setHasApiKey(true);
+      // Limit history to 30 items to prevent memory bloat and localStorage quota issues
+      const trimmedHistory = history.slice(0, 30);
+      localStorage.setItem('prompt_enhancer_history', JSON.stringify(trimmedHistory));
     } catch (e) {
-      setError("Unable to open API key selector. Ensure you are logged into Google AI Studio.");
+      console.warn("Failed to save history to localStorage (possibly quota exceeded)", e);
     }
-  };
+  }, [history]);
+
+  // Global error handling for unhandled rejections and errors
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error("Unhandled promise rejection:", event.reason);
+      setError(`An unexpected background error occurred: ${event.reason?.message || 'Unknown error'}`);
+    };
+
+    const handleGlobalError = (message: string | Event, source?: string, lineno?: number, colno?: number, error?: Error) => {
+      console.error("Global error:", message, error);
+      // Only show error if it's not a benign HMR/WebSocket error
+      const msg = typeof message === 'string' ? message : (message as any).message || 'Unknown error';
+      if (!msg.includes('websocket') && !msg.includes('HMR')) {
+        setError(`Application error: ${msg}`);
+      }
+      return false;
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.onerror = handleGlobalError;
+    
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.onerror = null;
+    };
+  }, []);
 
   const resetAllOutputs = () => {
     setImageOutput(null);
@@ -105,12 +124,7 @@ const App: React.FC = () => {
       setActiveHistoryId(newHistoryItem.id);
     } catch (e: any) {
       console.error(e);
-      if (e.message?.includes("Requested entity was not found")) {
-        setHasApiKey(false);
-        setError("API Key or Project not found. Please re-select your key.");
-      } else {
-        setError(`Failed to generate prompt. ${e.message || 'Please try again.'}`);
-      }
+      setError(`Failed to generate prompt. ${e.message || 'Please try again.'}`);
     } finally {
       setIsLoading(false);
     }
@@ -260,7 +274,7 @@ const App: React.FC = () => {
         
         if (activeHistoryId) {
             setHistory(prev => prev.map(item => {
-                if (item.id === activeHistoryId) {
+                if (item.id === activeHistoryId && item.type === 'video') {
                     return { ...item, output: newOutput };
                 }
                 return item;
@@ -273,7 +287,7 @@ const App: React.FC = () => {
 
          if (activeHistoryId) {
             setHistory(prev => prev.map(item => {
-                if (item.id === activeHistoryId) {
+                if (item.id === activeHistoryId && item.type === 'image') {
                     return { ...item, output: newOutput };
                 }
                 return item;
@@ -330,6 +344,7 @@ const App: React.FC = () => {
   const handleHistoryClear = () => {
     if (confirm('Are you sure you want to clear your history?')) {
         setHistory([]);
+        localStorage.removeItem('prompt_enhancer_history');
         resetAllOutputs();
     }
   };
@@ -355,21 +370,7 @@ const App: React.FC = () => {
             <Header 
               mode={mode} 
               setMode={setMode}
-              hasApiKey={hasApiKey}
-              onOpenKeySelector={handleOpenKeySelector}
             />
-
-            {!hasApiKey && (
-              <div className="px-4 py-2 mt-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-between group animate-pulse">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-indigo-400" />
-                  <p className="text-[11px] text-indigo-300 font-medium tracking-wide">
-                    Using shared rate limits. <button onClick={handleOpenKeySelector} className="underline font-bold hover:text-white transition-colors">Provide your own API Key</button> for higher limits.
-                  </p>
-                </div>
-                <button onClick={handleOpenKeySelector} className="text-[10px] bg-indigo-500 text-white px-2 py-1 rounded-lg font-bold uppercase tracking-tighter hover:bg-indigo-400 transition-colors">Setup Key</button>
-              </div>
-            )}
 
             <main className="flex-grow flex flex-col md:flex-row gap-6 pb-6 min-h-0 pt-4">
                 <div className="hidden md:flex flex-col w-64 flex-shrink-0">
