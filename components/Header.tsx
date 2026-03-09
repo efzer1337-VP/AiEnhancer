@@ -1,14 +1,17 @@
 
 import React from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
+import { Key } from 'lucide-react';
 import type { AppMode } from '../types';
 
 interface HeaderProps {
   mode: AppMode;
   setMode: (mode: AppMode) => void;
+  hasKey: boolean;
+  onSetKey: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ mode, setMode }) => {
+export const Header: React.FC<HeaderProps> = ({ mode, setMode, hasKey, onSetKey }) => {
   const modes: { id: AppMode; label: string }[] = [
     { id: 'image', label: 'Image Gen' },
     { id: 'video', label: 'Video Gen' },
@@ -53,11 +56,26 @@ export const Header: React.FC<HeaderProps> = ({ mode, setMode }) => {
       {/* Right Side - Branding Accent */}
       <div className="flex items-center gap-3">
          <div className="flex flex-col items-end gap-1">
-             <div className="flex items-center gap-2 bg-[#13151C] border border-white/10 px-3 py-1.5 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">
-                    System Active
-                </span>
+             <div className="flex items-center gap-3">
+                <button
+                    onClick={onSetKey}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300 ${
+                        hasKey 
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
+                        : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20'
+                    }`}
+                >
+                    <Key className="w-3 h-3" />
+                    <span className="text-[10px] font-mono uppercase tracking-widest">
+                        {hasKey ? 'Key Set' : 'Set API Key'}
+                    </span>
+                </button>
+                <div className="flex items-center gap-2 bg-[#13151C] border border-white/10 px-3 py-1.5 rounded-full">
+                    <span className={`w-1.5 h-1.5 rounded-full ${hasKey ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">
+                        {hasKey ? 'System Active' : 'Key Required'}
+                    </span>
+                </div>
              </div>
              <a 
                 href="https://ai.google.dev/gemini-api/docs/billing" 

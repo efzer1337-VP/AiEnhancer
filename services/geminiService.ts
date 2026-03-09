@@ -7,7 +7,7 @@ const FLASH_MODEL = 'gemini-3-flash-preview';
 const getAIClient = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
-    throw new Error("API_KEY environment variable is not set. Please select an API key via the interface.");
+    throw new Error("Gemini API Key is missing. Please click 'Set API Key' in the header to provide a valid key.");
   }
   return new GoogleGenAI({ apiKey });
 };

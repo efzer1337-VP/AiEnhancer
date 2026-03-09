@@ -1,6 +1,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
+import { Key } from 'lucide-react';
 import { PromptInput } from './components/PromptInput';
 import { VideoPromptInput } from './components/VideoPromptInput';
 import { EditPromptInput } from './components/EditPromptInput';
@@ -54,6 +55,34 @@ const App: React.FC = () => {
     }
   });
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
+  const [hasApiKey, setHasApiKey] = useState<boolean>(true); // Default to true to avoid flicker, check on mount
+
+  // Check API Key status
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio?.hasSelectedApiKey) {
+        const has = await window.aistudio.hasSelectedApiKey();
+        setHasApiKey(has);
+      }
+    };
+    checkKey();
+    
+    // Periodically check or listen for focus to update status
+    const interval = setInterval(checkKey, 5000);
+    window.addEventListener('focus', checkKey);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', checkKey);
+    };
+  }, []);
+
+  const handleOpenKeySelector = async () => {
+    if (window.aistudio?.openSelectKey) {
+      await window.aistudio.openSelectKey();
+      // After opening, we assume success or the user will try again
+      setHasApiKey(true);
+    }
+  };
 
   // Persist history to localStorage
   useEffect(() => {
@@ -370,6 +399,8 @@ const App: React.FC = () => {
             <Header 
               mode={mode} 
               setMode={setMode}
+              hasKey={hasApiKey}
+              onSetKey={handleOpenKeySelector}
             />
 
             <main className="flex-grow flex flex-col md:flex-row gap-6 pb-6 min-h-0 pt-4">
@@ -382,7 +413,30 @@ const App: React.FC = () => {
                     />
                 </div>
 
-                <div className="flex-1 min-w-0 flex flex-col h-full">
+                <div className="flex-1 min-w-0 flex flex-col h-full relative">
+                   {!hasApiKey && (
+                     <div className="absolute inset-0 z-50 flex items-center justify-center p-6">
+                       <div className="bg-[#13151C]/90 backdrop-blur-md border border-indigo-500/30 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl ring-1 ring-indigo-500/20">
+                         <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-indigo-500/20">
+                           <Key className="w-8 h-8 text-indigo-400" />
+                         </div>
+                         <h2 className="text-xl font-bold text-white mb-3">API Key Required</h2>
+                         <p className="text-slate-400 text-sm mb-8 leading-relaxed">
+                           To use high-quality generative models, you need to select a paid Gemini API key. Your key is handled securely by the platform and never stored in the application code.
+                         </p>
+                         <button
+                           onClick={handleOpenKeySelector}
+                           className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+                         >
+                           <Key className="w-4 h-4" />
+                           Select API Key
+                         </button>
+                         <p className="mt-4 text-[10px] text-slate-500 uppercase tracking-widest">
+                           Secure • Encrypted • Platform Managed
+                         </p>
+                       </div>
+                     </div>
+                   )}
                    {mode === 'image' && (
                         <PromptInput 
                             prompt={imagePrompt}
