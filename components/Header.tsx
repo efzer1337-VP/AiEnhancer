@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
-import { Key } from 'lucide-react';
+import { Key, Menu } from 'lucide-react';
 import type { AppMode } from '../types';
 
 interface HeaderProps {
@@ -9,9 +9,10 @@ interface HeaderProps {
   setMode: (mode: AppMode) => void;
   hasKey: boolean;
   onSetKey: () => void;
+  onToggleSidebar: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ mode, setMode, hasKey, onSetKey }) => {
+export const Header: React.FC<HeaderProps> = ({ mode, setMode, hasKey, onSetKey, onToggleSidebar }) => {
   const modes: { id: AppMode; label: string }[] = [
     { id: 'image', label: 'Image Gen' },
     { id: 'video', label: 'Video Gen' },
@@ -19,27 +20,49 @@ export const Header: React.FC<HeaderProps> = ({ mode, setMode, hasKey, onSetKey 
   ];
 
   return (
-    <header className="flex flex-col md:flex-row items-center justify-between gap-4 py-4 flex-shrink-0">
-      {/* Logo / Brand */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-700 shadow-[0_0_15px_rgba(99,102,241,0.4)] text-white border border-indigo-500/30">
-            <SparklesIcon className="w-5 h-5" />
+    <header className="flex flex-col lg:flex-row items-center justify-between gap-4 py-4 flex-shrink-0">
+      <div className="flex items-center justify-between w-full lg:w-auto">
+        {/* Logo / Brand */}
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={onToggleSidebar}
+            className="lg:hidden p-2 hover:bg-white/5 rounded-lg text-slate-400 transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-violet-700 shadow-[0_0_15px_rgba(99,102,241,0.4)] text-white border border-indigo-500/30">
+              <SparklesIcon className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col">
+              <h1 className="text-base font-bold text-slate-100 tracking-tight leading-none">
+              Prompt<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">Enhancer</span>
+              </h1>
+              <span className="text-[10px] text-slate-500 font-mono mt-0.5">Generative Suite</span>
+          </div>
         </div>
-        <div className="flex flex-col">
-            <h1 className="text-base font-bold text-slate-100 tracking-tight leading-none">
-            Prompt<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">Enhancer</span>
-            </h1>
-            <span className="text-[10px] text-slate-500 font-mono mt-0.5">Generative Suite</span>
+
+        {/* Mobile Key Status */}
+        <div className="lg:hidden flex items-center gap-2">
+            <button
+                onClick={onSetKey}
+                className={`p-2 rounded-lg border transition-all duration-300 ${
+                    hasKey 
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                    : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
+                }`}
+            >
+                <Key className="w-4 h-4" />
+            </button>
         </div>
       </div>
 
       {/* Center Navigation */}
-      <nav className="bg-[#13151C] border border-white/10 rounded-full p-1 flex items-center shadow-lg shadow-black/20">
+      <nav className="bg-[#13151C] border border-white/10 rounded-full p-1 flex items-center shadow-lg shadow-black/20 overflow-x-auto max-w-full no-scrollbar">
         {modes.map((m) => (
             <button
                 key={m.id}
                 onClick={() => setMode(m.id)}
-                className={`relative px-6 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 z-10 ${
+                className={`relative px-4 md:px-6 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 z-10 whitespace-nowrap ${
                     mode === m.id 
                     ? 'text-white shadow-sm' 
                     : 'text-slate-500 hover:text-slate-300'
@@ -54,7 +77,7 @@ export const Header: React.FC<HeaderProps> = ({ mode, setMode, hasKey, onSetKey 
       </nav>
       
       {/* Right Side - Branding Accent */}
-      <div className="flex items-center gap-3">
+      <div className="hidden lg:flex items-center gap-3">
          <div className="flex flex-col items-end gap-1">
              <div className="flex items-center gap-3">
                 <button

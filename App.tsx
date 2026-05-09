@@ -9,7 +9,7 @@ import { OutputDisplay } from './components/OutputDisplay';
 import { HistorySidebar } from './components/HistorySidebar';
 import { ReversePromptModal } from './components/ReversePromptModal';
 import { generateEnhancedPrompt, generateEnhancedVideoPrompt, generateEnhancedEditPrompt, refineEnhancedPrompt, refineEnhancedVideoPrompt, refineEnhancedEditPrompt, superEnhanceVideoPrompt, superEnhanceImagePrompt, reversePromptImage } from './services/geminiService';
-import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode, ImageModel, VideoModel, EditModel, HistoryItem, AppMode } from './types';
+import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode, ImageModel, VideoModel, EditModel, HistoryItem, AppMode, CategorizedReferences } from './types';
 
 const App: React.FC = () => {
   // Common state
@@ -25,6 +25,12 @@ const App: React.FC = () => {
   // Image-specific state
   const [imagePrompt, setImagePrompt] = useState<string>('');
   const [imageReferences, setImageReferences] = useState<string[]>([]);
+  const [categorizedReferences, setCategorizedReferences] = useState<CategorizedReferences>({
+    characters: [],
+    composition: [],
+    scene: [],
+    style: [],
+  });
   const [imageModel, setImageModel] = useState<ImageModel>('midjourney');
   const [imageOutput, setImageOutput] = useState<EnhancedPrompt | null>(null);
   const [isReversePromptOpen, setIsReversePromptOpen] = useState<boolean>(false);
@@ -36,6 +42,8 @@ const App: React.FC = () => {
   const [videoCharacterReferences, setVideoCharacterReferences] = useState<string[]>([]);
   const [videoModel, setVideoModel] = useState<VideoModel>('veo');
   const [videoOutput, setVideoOutput] = useState<EnhancedVideoPrompt | null>(null);
+  const [isVideoRelay, setIsVideoRelay] = useState<boolean>(false);
+  const [videoRelayFrames, setVideoRelayFrames] = useState<number>(240);
 
   // Edit-specific state
   const [editPrompt, setEditPrompt] = useState<string>('');
@@ -56,6 +64,7 @@ const App: React.FC = () => {
   });
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
   const [hasApiKey, setHasApiKey] = useState<boolean>(true); // Default to true to avoid flicker, check on mount
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
   // Check API Key status
   useEffect(() => {
@@ -129,7 +138,8 @@ const App: React.FC = () => {
   };
 
   const handleImageGenerate = useCallback(async () => {
-    if (!imagePrompt.trim() && imageReferences.length === 0) {
+    if (!imagePrompt.trim() && imageReferences.length === 0 && 
+        Object.values(categorizedReferences).every(arr => (arr as string[]).length === 0)) {
       setError('Please enter a prompt or provide at least one reference image.');
       return;
     }
@@ -137,7 +147,14 @@ const App: React.FC = () => {
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedPrompt(imagePrompt, language, imageModel, imageReferences, enhancementPower);
+      const result = await generateEnhancedPrompt(
+        imagePrompt, 
+        language, 
+        imageModel, 
+        imageReferences, 
+        enhancementPower,
+        categorizedReferences
+      );
       setImageOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -147,6 +164,7 @@ const App: React.FC = () => {
         model: imageModel,
         output: result,
         references: imageReferences,
+        categorizedReferences,
         enhancementPower
       };
       setHistory(prev => [newHistoryItem, ...prev]);
@@ -157,7 +175,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [imagePrompt, language, imageModel, imageReferences, enhancementPower]);
+  }, [imagePrompt, language, imageModel, imageReferences, categorizedReferences, enhancementPower]);
 
   const handleReversePrompt = async (imageBase64: string, context: string) => {
     setIsLoading(true);
@@ -195,7 +213,17 @@ const App: React.FC = () => {
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedVideoPrompt(videoPrompt, firstFrame, lastFrame, videoCharacterReferences, language, videoModel, enhancementPower);
+      const result = await generateEnhancedVideoPrompt(
+        videoPrompt, 
+        firstFrame, 
+        lastFrame, 
+        videoCharacterReferences, 
+        language, 
+        videoModel, 
+        enhancementPower,
+        isVideoRelay,
+        videoRelayFrames
+      );
       setVideoOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -207,7 +235,9 @@ const App: React.FC = () => {
         firstFrame: firstFrame || null,
         lastFrame: lastFrame || null,
         characterReferences: videoCharacterReferences,
-        enhancementPower
+        enhancementPower,
+        isRelayMode: isVideoRelay,
+        relayFrames: videoRelayFrames
       };
       setHistory(prev => [newHistoryItem, ...prev]);
       setActiveHistoryId(newHistoryItem.id);
@@ -348,6 +378,12 @@ const App: React.FC = () => {
         setImageModel(item.model);
         setImageOutput(item.output);
         setImageReferences(item.references || []);
+        setCategorizedReferences(item.categorizedReferences || {
+            characters: [],
+            composition: [],
+            scene: [],
+            style: [],
+        });
         setVideoOutput(null);
         setEditOutput(null);
     } else if (item.type === 'video') {
@@ -357,6 +393,8 @@ const App: React.FC = () => {
         setFirstFrame(item.firstFrame || null);
         setLastFrame(item.lastFrame || null);
         setVideoCharacterReferences(item.characterReferences || []);
+        setIsVideoRelay(item.isRelayMode || false);
+        setVideoRelayFrames(item.relayFrames || 240);
         setImageOutput(null);
         setEditOutput(null);
     } else if (item.type === 'edit') {
@@ -388,7 +426,7 @@ const App: React.FC = () => {
   const currentTargetModel = mode === 'image' ? imageModel : mode === 'video' ? videoModel : editModel;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[#02040a] text-slate-200 font-sans selection:bg-indigo-500/30">
+    <div className="flex flex-col min-h-screen lg:h-screen lg:overflow-hidden bg-[#02040a] text-slate-200 font-sans selection:bg-indigo-500/30">
         <div className="fixed inset-0 pointer-events-none z-0">
              <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-900/10 rounded-full blur-[120px]" />
              <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-900/10 rounded-full blur-[120px]" />
@@ -401,20 +439,38 @@ const App: React.FC = () => {
               setMode={setMode}
               hasKey={hasApiKey}
               onSetKey={handleOpenKeySelector}
+              onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
             />
 
-            <main className="flex-grow flex flex-col md:flex-row gap-6 pb-6 min-h-0 pt-4">
-                <div className="hidden md:flex flex-col w-64 flex-shrink-0">
+            <main className="flex-grow flex flex-col md:flex-row gap-6 pb-6 min-h-0 pt-4 relative">
+                {/* Mobile Sidebar Overlay */}
+                {isSidebarOpen && (
+                    <div 
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden" 
+                        onClick={() => setIsSidebarOpen(false)}
+                    />
+                )}
+
+                {/* Sidebar */}
+                <div className={`
+                    ${isSidebarOpen ? 'fixed left-0 top-0 bottom-0 w-72 z-50 translate-x-0' : 'fixed left-0 top-0 bottom-0 w-72 z-50 -translate-x-full'} 
+                    md:relative md:translate-x-0 md:flex md:w-64 md:z-auto
+                    transition-transform duration-300 ease-in-out flex flex-col flex-shrink-0
+                `}>
                     <HistorySidebar 
                         history={history} 
                         activeId={activeHistoryId} 
-                        onSelect={handleHistorySelect}
+                        onSelect={(id) => {
+                            handleHistorySelect(id);
+                            setIsSidebarOpen(false);
+                        }}
                         onClear={handleHistoryClear}
                     />
                 </div>
 
-                <div className="flex-1 min-w-0 flex flex-col h-full relative">
-                   {!hasApiKey && (
+                <div className="flex-1 min-w-0 flex flex-col lg:flex-row gap-6 lg:h-full overflow-y-auto lg:overflow-visible custom-scrollbar">
+                    <div className="flex-1 min-w-0 flex flex-col min-h-[500px] lg:h-full relative">
+                       {!hasApiKey && (
                      <div className="absolute inset-0 z-50 flex items-center justify-center p-6">
                        <div className="bg-[#13151C]/90 backdrop-blur-md border border-indigo-500/30 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl ring-1 ring-indigo-500/20">
                          <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-indigo-500/20">
@@ -443,6 +499,8 @@ const App: React.FC = () => {
                             setPrompt={setImagePrompt}
                             references={imageReferences}
                             setReferences={setImageReferences}
+                            categorizedReferences={categorizedReferences}
+                            setCategorizedReferences={setCategorizedReferences}
                             language={language}
                             setLanguage={setLanguage}
                             imageModel={imageModel}
@@ -470,6 +528,10 @@ const App: React.FC = () => {
                             setVideoModel={setVideoModel}
                             enhancementPower={enhancementPower}
                             setEnhancementPower={setEnhancementPower}
+                            isRelayMode={isVideoRelay}
+                            setIsRelayMode={setIsVideoRelay}
+                            relayFrames={videoRelayFrames}
+                            setRelayFrames={setVideoRelayFrames}
                             onGenerate={onGenerate}
                             isLoading={isLoading}
                        />
@@ -494,8 +556,8 @@ const App: React.FC = () => {
                    )}
                 </div>
 
-                <div className="flex-1 min-w-0 flex flex-col h-full">
-                    <OutputDisplay 
+                    <div className="flex-1 min-w-0 flex flex-col min-h-[500px] lg:h-full">
+                        <OutputDisplay 
                         output={currentOutput}
                         targetModel={currentTargetModel}
                         isLoading={isLoading}
@@ -508,7 +570,8 @@ const App: React.FC = () => {
                         onSuperEnhance={handleSuperEnhance}
                     />
                 </div>
-            </main>
+            </div>
+        </main>
         </div>
 
         {isReversePromptOpen && (

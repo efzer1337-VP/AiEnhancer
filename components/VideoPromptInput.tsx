@@ -2,6 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ImageIcon } from './icons/ImageIcon';
+import { resizeImage } from '../src/utils/imageUtils';
 import type { VideoModel } from '../types';
 
 interface VideoPromptInputProps {
@@ -19,6 +20,10 @@ interface VideoPromptInputProps {
   setVideoModel: (model: VideoModel) => void;
   enhancementPower: number;
   setEnhancementPower: (power: number) => void;
+  isRelayMode: boolean;
+  setIsRelayMode: (isRelay: boolean) => void;
+  relayFrames: number;
+  setRelayFrames: (frames: number) => void;
   onGenerate: () => void;
   isLoading: boolean;
 }
@@ -53,8 +58,9 @@ const VideoImageDropzone: React.FC<{
     if (files && files[0]) {
       const file = files[0];
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setImage(e.target?.result as string);
+      reader.onload = async (e) => {
+        const resized = await resizeImage(e.target?.result as string);
+        setImage(resized);
       };
       reader.readAsDataURL(file);
     }
@@ -141,9 +147,10 @@ const MultiImageDropzone: React.FC<{
 
       fileArray.forEach(file => {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
           if (e.target?.result) {
-            newImages.push(e.target.result as string);
+            const resized = await resizeImage(e.target.result as string);
+            newImages.push(resized);
           }
           processedCount++;
           if (processedCount === fileArray.length) {
@@ -251,6 +258,10 @@ export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
   setVideoModel,
   enhancementPower,
   setEnhancementPower,
+  isRelayMode,
+  setIsRelayMode,
+  relayFrames,
+  setRelayFrames,
   onGenerate,
   isLoading,
 }) => {
@@ -334,7 +345,10 @@ export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
                 {videoModels.map((model) => (
                     <button
                     key={model.id}
-                    onClick={() => setVideoModel(model.id)}
+                    onClick={() => {
+                        setVideoModel(model.id);
+                        if (model.id !== 'ltx') setIsRelayMode(false);
+                    }}
                     className={`px-1 py-2 text-[9px] uppercase tracking-tight font-bold rounded-lg border transition-all duration-200 ${
                         videoModel === model.id
                         ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-200 shadow-sm'
@@ -346,15 +360,50 @@ export const VideoPromptInput: React.FC<VideoPromptInputProps> = ({
                 ))}
             </div>
         </div>
+
+        {videoModel === 'ltx' && (
+            <div className="flex flex-col gap-3 p-3 bg-indigo-500/5 border border-indigo-500/20 rounded-xl transition-all">
+                <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider">Prompt Relay Mode</span>
+                        <span className="text-[9px] text-indigo-400/70">Split prompt into temporal segments</span>
+                    </div>
+                    <button 
+                        onClick={() => setIsRelayMode(!isRelayMode)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${isRelayMode ? 'bg-indigo-600' : 'bg-zinc-700'}`}
+                    >
+                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isRelayMode ? 'translate-x-5' : 'translate-x-1'}`} />
+                    </button>
+                </div>
+                
+                {isRelayMode && (
+                    <div className="flex flex-col gap-1.5 animate-in zoom-in-95 duration-200">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-0.5">Total Frame Length</label>
+                        <div className="relative">
+                            <input 
+                                type="number"
+                                value={relayFrames}
+                                onChange={(e) => setRelayFrames(Math.max(1, parseInt(e.target.value) || 0))}
+                                className="w-full bg-zinc-900/80 border border-indigo-500/30 rounded-lg px-3 py-2 text-xs text-indigo-100 outline-none focus:ring-1 focus:ring-indigo-500 pr-10"
+                                placeholder="Total frames (e.g. 240)"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-indigo-400 font-mono">FR</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )}
       </div>
       
       <div className="flex-grow flex flex-col space-y-2 min-h-[120px]">
-        <label className="text-xs font-medium text-slate-400">Narrative/Action</label>
+        <label className="text-xs font-medium text-slate-400">{isRelayMode ? 'Relay Concept' : 'Narrative/Action'}</label>
         <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder={language === 'en' ? 'e.g. camera dollies forward as the car accelerates...' : 'например, камера наезжает, пока машина ускоряется...'}
-            className="w-full flex-grow p-4 bg-zinc-900/50 border border-white/10 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none resize-none transition-all font-mono hover:border-white/20"
+            placeholder={isRelayMode 
+                ? 'Describe the sequence of actions that should be split into shots...' 
+                : (language === 'en' ? 'e.g. camera dollies forward as the car accelerates...' : 'например, камера наезжает, пока машина ускоряется...')}
+            className={`w-full flex-grow p-4 bg-zinc-900/50 border rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none resize-none transition-all font-mono hover:border-white/20 ${isRelayMode ? 'border-indigo-500/30' : 'border-white/10'}`}
             disabled={isLoading}
         />
       </div>

@@ -54,7 +54,7 @@ export const ReversePromptModal: React.FC<ReversePromptModalProps> = ({ onClose,
       />
       
       {/* Modal Container */}
-      <div className="relative w-full max-w-xl bg-[#13151C] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col ring-1 ring-white/5 animate-in zoom-in duration-200">
+      <div className="relative w-full max-w-xl max-h-[90vh] bg-[#13151C] border border-white/10 rounded-2xl shadow-2xl overflow-y-auto custom-scrollbar flex flex-col ring-1 ring-white/5 animate-in zoom-in duration-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#0B0D12]">
             <div className="flex items-center gap-3">
                 <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">

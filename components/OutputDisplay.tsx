@@ -134,7 +134,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
               <p className="text-slate-300 font-mono text-sm pr-8">{fullPrompt}</p>
             </div>
           </CollapsibleSection>
-          <div className="grid grid-cols-2 bg-[#0B0D12] border-b border-white/10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 bg-[#0B0D12] border-b border-white/10">
               <div className="p-4 border-r border-white/10 bg-indigo-500/5">
                 <Detail label="Subject Lock" value={p.subject.anatomy_constraints} />
                 <Detail label="Skeletal Lock" value={p.pose.skeletal_lock} />
@@ -156,7 +156,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
   const renderVideoView = (data: EnhancedVideoPrompt) => (
     <div className="flex flex-col h-full">
       <RefineInput onRefine={onRefine} isRefining={isRefining} />
-      <CollapsibleSection title={targetModel === 'ltx' ? "Final LTX Prompt" : "Master Cinematic Prompt"} defaultOpen={true}>
+      <CollapsibleSection title={targetModel === 'ltx' ? "Final LTX Prompt" : targetModel === 'kling' ? "Final Kling Prompt" : "Master Cinematic Prompt"} defaultOpen={true}>
         <div className="relative group">
           <button 
             onClick={() => handleCopy(data.full_prompt, 'video-full')} 
@@ -168,7 +168,21 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
         </div>
       </CollapsibleSection>
 
-      {targetModel !== 'ltx' && (
+      {data.general_scene_prompt && (
+        <CollapsibleSection title="General Scene Prompt" defaultOpen={true}>
+          <div className="relative group">
+            <button 
+              onClick={() => handleCopy(data.general_scene_prompt!, 'video-general')} 
+              className="absolute top-0 right-0 p-1.5 bg-zinc-800 rounded opacity-0 group-hover:opacity-100 transition-all z-10"
+            >
+              <ClipboardIcon className="w-3 h-3" />
+            </button>
+            <p className="text-slate-400 font-mono text-sm leading-relaxed pr-8 italic">{data.general_scene_prompt}</p>
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {targetModel !== 'ltx' && targetModel !== 'kling' && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 bg-[#0B0D12] border-b border-white/10">
             <div className="p-4 border-r border-white/10 bg-indigo-500/5">
@@ -256,7 +270,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                 <p className="text-slate-300 font-mono text-sm leading-relaxed pr-8">{data.master_edit_prompt}</p>
             </div>
        </CollapsibleSection>
-       <div className="grid grid-cols-2 bg-[#0B0D12] border-b border-white/10">
+       <div className="grid grid-cols-1 sm:grid-cols-2 bg-[#0B0D12] border-b border-white/10">
             <div className="p-4 border-r border-white/10 bg-emerald-500/5">
                 <h3 className="text-[10px] uppercase text-emerald-400 font-bold mb-3">Preservation Locks</h3>
                 <Detail label="" value={data.preservation_locks} />

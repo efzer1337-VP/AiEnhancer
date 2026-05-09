@@ -2,6 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ImageIcon } from './icons/ImageIcon';
+import { resizeImage } from '../src/utils/imageUtils';
 import type { EditModel } from '../types';
 
 interface EditPromptInputProps {
@@ -56,9 +57,10 @@ const MultiImageDropzone: React.FC<{
 
       fileArray.forEach(file => {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
           if (e.target?.result) {
-            newImages.push(e.target.result as string);
+            const resized = await resizeImage(e.target.result as string);
+            newImages.push(resized);
           }
           processedCount++;
           if (processedCount === fileArray.length) {
@@ -180,8 +182,9 @@ export const EditPromptInput: React.FC<EditPromptInputProps> = ({
     if (files && files[0]) {
       const file = files[0];
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setSourceImage(e.target?.result as string);
+      reader.onload = async (e) => {
+        const resized = await resizeImage(e.target?.result as string);
+        setSourceImage(resized);
       };
       reader.readAsDataURL(file);
     }

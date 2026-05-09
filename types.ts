@@ -6,6 +6,13 @@ export type EditModel = 'nanobanana' | 'z-image' | 'flux_klein';
 
 // --- IMAGE PROMPT TYPES ---
 
+export interface CategorizedReferences {
+  characters: string[];
+  composition: string[];
+  scene: string[];
+  style: string[];
+}
+
 export interface PromptSubject {
   description: string;
   anatomy_constraints: string;
@@ -142,6 +149,7 @@ export interface VideoAudio {
 
 export interface EnhancedVideoPrompt {
   full_prompt: string;
+  general_scene_prompt: string;
   scene_setup: VideoSceneSetup;
   subjects: VideoSubject[];
   motion_dynamics: VideoMotion;
@@ -183,6 +191,7 @@ export interface HistoryItemImage extends HistoryItemBase {
   model: ImageModel;
   output: EnhancedPrompt;
   references?: string[];
+  categorizedReferences?: CategorizedReferences;
 }
 
 export interface HistoryItemVideo extends HistoryItemBase {
@@ -192,6 +201,8 @@ export interface HistoryItemVideo extends HistoryItemBase {
   firstFrame?: string | null;
   lastFrame?: string | null;
   characterReferences?: string[];
+  isRelayMode?: boolean;
+  relayFrames?: number;
 }
 
 export interface HistoryItemEdit extends HistoryItemBase {

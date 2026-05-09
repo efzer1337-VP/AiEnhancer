@@ -2,13 +2,16 @@
 import React, { useRef, useState } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ImageIcon } from './icons/ImageIcon';
-import type { ImageModel } from '../types';
+import { resizeImage } from '../src/utils/imageUtils';
+import type { ImageModel, CategorizedReferences } from '../types';
 
 interface PromptInputProps {
   prompt: string;
   setPrompt: (prompt: string) => void;
   references: string[];
   setReferences: (images: string[] | ((prev: string[]) => string[])) => void;
+  categorizedReferences: CategorizedReferences;
+  setCategorizedReferences: (refs: CategorizedReferences | ((prev: CategorizedReferences) => CategorizedReferences)) => void;
   language: 'en' | 'ru';
   setLanguage: (language: 'en' | 'ru') => void;
   imageModel: ImageModel;
@@ -42,7 +45,8 @@ const MultiImageDropzone: React.FC<{
   setImages: (update: string[] | ((prev: string[]) => string[])) => void;
   isLoading: boolean;
   className?: string;
-}> = ({ title, subtitle, images, setImages, isLoading, className }) => {
+  compact?: boolean;
+}> = ({ title, subtitle, images, setImages, isLoading, className, compact }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
 
@@ -56,9 +60,10 @@ const MultiImageDropzone: React.FC<{
 
       fileArray.forEach(file => {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
           if (e.target?.result) {
-            newImages.push(e.target.result as string);
+            const resized = await resizeImage(e.target.result as string);
+            newImages.push(resized);
           }
           processedCount++;
           if (processedCount === fileArray.length) {
@@ -96,7 +101,7 @@ const MultiImageDropzone: React.FC<{
 
   return (
     <div
-      className={`group relative w-full border border-dashed rounded-xl p-3 text-center cursor-pointer transition-all duration-300 flex flex-col items-center min-h-[120px] bg-zinc-900/30 hover:bg-white/[0.04] ${
+      className={`group relative w-full border border-dashed rounded-xl ${compact ? 'p-1.5' : 'p-3'} text-center cursor-pointer transition-all duration-300 flex flex-col items-center ${compact ? 'min-h-[80px]' : 'min-h-[120px]'} bg-zinc-900/30 hover:bg-white/[0.04] ${
         dragActive ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 hover:border-white/30'
       } ${className}`}
       onClick={(e) => {
@@ -121,38 +126,38 @@ const MultiImageDropzone: React.FC<{
       
       {images.length > 0 ? (
         <div className="w-full">
-            <div className="flex justify-between items-center mb-3 px-1">
-                <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">{images.length} References Selected</p>
+            <div className={`flex justify-between items-center ${compact ? 'mb-1' : 'mb-3'} px-1`}>
+                <p className={`${compact ? 'text-[8px]' : 'text-[10px]'} text-slate-500 font-mono uppercase tracking-widest`}>{images.length} {compact ? 'Items' : 'References Selected'}</p>
                 <button 
                     onClick={(e) => { e.stopPropagation(); setImages([]); }}
-                    className="text-[9px] text-red-400 hover:text-red-300 uppercase tracking-tighter font-bold border border-red-500/20 px-1.5 py-0.5 rounded bg-red-500/5 transition-colors"
+                    className={`${compact ? 'text-[8px] px-1' : 'text-[9px] px-1.5'} text-red-400 hover:text-red-300 uppercase tracking-tighter font-bold border border-red-500/20 py-0.5 rounded bg-red-500/5 transition-colors`}
                 >
-                    Clear All
+                    Clear
                 </button>
             </div>
-            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 w-full p-1">
+            <div className={`grid ${compact ? 'grid-cols-3' : 'grid-cols-4 sm:grid-cols-5'} gap-2 w-full p-1`}>
                 {images.map((img, index) => (
-                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 group/img shadow-lg">
+                    <div key={index} className="relative aspect-square rounded overflow-hidden border border-white/10 group/img shadow-lg">
                         <img src={img} alt={`Ref ${index}`} className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" />
                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center" />
                          <button
                             onClick={(e) => { e.stopPropagation(); removeImage(index); }}
-                            className="absolute top-1 right-1 bg-red-600/80 text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-red-500 transition-colors opacity-0 group-hover/img:opacity-100 z-20 shadow-xl"
+                            className={`absolute top-0.5 right-0.5 bg-red-600/80 text-white rounded-full ${compact ? 'w-4 h-4' : 'w-5 h-5'} flex items-center justify-center hover:bg-red-500 transition-colors opacity-0 group-hover/img:opacity-100 z-20 shadow-xl`}
                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            <svg className={`${compact ? 'w-2 h-2' : 'w-3 h-3'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
                          </button>
                     </div>
                 ))}
-                <div className="flex flex-col items-center justify-center aspect-square rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-colors group/add">
-                     <span className="text-xl text-slate-500 group-hover/add:text-slate-300 group-hover/add:scale-125 transition-all">+</span>
+                <div className="flex flex-col items-center justify-center aspect-square rounded border border-white/5 bg-white/5 hover:bg-white/10 transition-colors group/add">
+                     <span className={`${compact ? 'text-sm' : 'text-xl'} text-slate-500 group-hover/add:text-slate-300 group-hover/add:scale-125 transition-all`}>+</span>
                 </div>
             </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center h-full py-4 text-slate-500 group-hover:text-slate-300 transition-colors relative z-10">
-          <ImageIcon className="w-6 h-6 mb-2 opacity-50" />
-          <p className="font-bold text-[11px] uppercase tracking-widest">{title}</p>
-          {subtitle && <p className="text-[10px] text-slate-600 mt-1">{subtitle}</p>}
+        <div className={`flex flex-col items-center justify-center h-full ${compact ? 'py-2' : 'py-4'} text-slate-500 group-hover:text-slate-300 transition-colors relative z-10`}>
+          <ImageIcon className={`${compact ? 'w-4 h-4 mb-1' : 'w-6 h-6 mb-2'} opacity-50`} />
+          <p className={`font-bold ${compact ? 'text-[8px]' : 'text-[11px]'} uppercase tracking-widest`}>{title}</p>
+          {!compact && subtitle && <p className="text-[10px] text-slate-600 mt-1">{subtitle}</p>}
         </div>
       )}
     </div>
@@ -164,6 +169,8 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   setPrompt,
   references,
   setReferences,
+  categorizedReferences,
+  setCategorizedReferences,
   language,
   setLanguage,
   imageModel,
@@ -196,15 +203,64 @@ export const PromptInput: React.FC<PromptInputProps> = ({
           </select>
       </div>
 
-      <div className="flex flex-col gap-2 flex-shrink-0">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold ml-1">Reference Images (Character, Style, Composition)</span>
-          <MultiImageDropzone 
-            title="Upload references" 
-            subtitle="Drop multiple files or click to browse"
-            images={references} 
-            setImages={setReferences} 
-            isLoading={isLoading}
-          />
+      <div className="flex flex-col gap-4 flex-shrink-0">
+          <div className="flex flex-col gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold ml-1">Reference Images (Character, Style, Composition)</span>
+            
+            {/* Categorized Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <MultiImageDropzone 
+                title="Characters" 
+                images={categorizedReferences.characters} 
+                setImages={(update) => setCategorizedReferences(prev => ({
+                    ...prev,
+                    characters: typeof update === 'function' ? (update as any)(prev.characters) : update
+                }))} 
+                isLoading={isLoading}
+                compact={true}
+              />
+              <MultiImageDropzone 
+                title="Composition" 
+                images={categorizedReferences.composition} 
+                setImages={(update) => setCategorizedReferences(prev => ({
+                    ...prev,
+                    composition: typeof update === 'function' ? (update as any)(prev.composition) : update
+                }))} 
+                isLoading={isLoading}
+                compact={true}
+              />
+              <MultiImageDropzone 
+                title="Scene/BG" 
+                images={categorizedReferences.scene} 
+                setImages={(update) => setCategorizedReferences(prev => ({
+                    ...prev,
+                    scene: typeof update === 'function' ? (update as any)(prev.scene) : update
+                }))} 
+                isLoading={isLoading}
+                compact={true}
+              />
+              <MultiImageDropzone 
+                title="Style" 
+                images={categorizedReferences.style} 
+                setImages={(update) => setCategorizedReferences(prev => ({
+                    ...prev,
+                    style: typeof update === 'function' ? (update as any)(prev.style) : update
+                }))} 
+                isLoading={isLoading}
+                compact={true}
+              />
+            </div>
+
+            {/* General References */}
+            <MultiImageDropzone 
+                title="General References" 
+                subtitle="Drop files or click"
+                images={references} 
+                setImages={setReferences} 
+                isLoading={isLoading}
+                className="mt-1"
+            />
+          </div>
       </div>
       
       <div className="space-y-5 flex-shrink-0">
@@ -268,7 +324,7 @@ export const PromptInput: React.FC<PromptInputProps> = ({
       <div className="pt-2 pb-1 flex-shrink-0">
           <button
             onClick={onGenerate}
-            disabled={isLoading || (!prompt.trim() && references.length === 0)}
+            disabled={isLoading || (!prompt.trim() && references.length === 0 && Object.values(categorizedReferences).every(arr => (arr as string[]).length === 0))}
             className="relative z-10 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium py-3.5 px-4 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_30px_rgba(79,70,229,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-white/10"
           >
             {isLoading ? (
