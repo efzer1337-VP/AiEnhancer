@@ -5,10 +5,14 @@ import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ImageMode
 const FLASH_MODEL = 'gemini-3-flash-preview';
 
 const getAIClient = () => {
-  // Поддержка Vite, Node.js (процесс) и AI Studio
-  const apiKey = import.meta.env?.VITE_API_KEY || (typeof process !== 'undefined' && process.env?.API_KEY) || (window as any).aistudio?.getApiKey?.() || '';
+  // Поддержка Vite, Node.js (процесс), AI Studio, и localStorage (пользовательский ввод)
+  const apiKey = import.meta.env?.VITE_API_KEY || 
+                 (typeof process !== 'undefined' && process.env?.API_KEY) || 
+                 (window as any).aistudio?.getApiKey?.() || 
+                 localStorage.getItem('gemini_api_key') || 
+                 '';
   if (!apiKey) {
-    throw new Error("Gemini API Key is missing. Please click 'Set API Key' in the header or set VITE_API_KEY in your .env file.");
+    throw new Error("Gemini API Key is missing. Please click 'Set API Key' in the header to provide a valid key.");
   }
   return new GoogleGenAI({ apiKey });
 };

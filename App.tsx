@@ -72,6 +72,9 @@ const App: React.FC = () => {
       if (window.aistudio?.hasSelectedApiKey) {
         const has = await window.aistudio.hasSelectedApiKey();
         setHasApiKey(has);
+      } else {
+        const localKey = localStorage.getItem('gemini_api_key');
+        setHasApiKey(!!localKey);
       }
     };
     checkKey();
@@ -90,6 +93,12 @@ const App: React.FC = () => {
       await window.aistudio.openSelectKey();
       // After opening, we assume success or the user will try again
       setHasApiKey(true);
+    } else {
+      const key = window.prompt('Please enter your Gemini API Key:\n\nYour key is saved locally in your browser and is never sent to our servers.');
+      if (key && key.trim().length > 0) {
+        localStorage.setItem('gemini_api_key', key.trim());
+        setHasApiKey(true);
+      }
     }
   };
 
