@@ -210,25 +210,34 @@ export const EditPromptInput: React.FC<EditPromptInputProps> = ({
   };
 
   return (
-    <div className="bg-[#13151C]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-6 h-full ring-1 ring-white/5 overflow-y-auto custom-scrollbar">
+    <div className="bg-[#0e1018]/80 backdrop-blur-2xl border border-white/8 rounded-2xl p-5 shadow-2xl shadow-black/40 flex flex-col gap-5 h-full overflow-y-auto custom-scrollbar">
+      {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
-         <h2 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Edit Configuration</h2>
+         <div className="flex items-center gap-2">
+           <div className="w-1.5 h-4 bg-gradient-to-b from-pink-400 via-rose-400 to-orange-400 rounded-full" />
+           <h2 className="text-xs font-semibold text-slate-300 uppercase tracking-widest">Edit Config</h2>
+         </div>
          <select
             value={language}
             onChange={(e) => setLanguage(e.target.value as 'en' | 'ru')}
-            className="bg-zinc-900/80 border border-white/10 rounded-md px-3 py-1.5 text-xs text-slate-300 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-white/20 transition-colors"
+            className="bg-[#13151c] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:ring-1 focus:ring-pink-500/50 focus:border-pink-500/50 outline-none hover:border-white/20 transition-colors cursor-pointer"
           >
-            <option value="en">English</option>
-            <option value="ru">Russian</option>
+            <option value="en">🇬🇧 English</option>
+            <option value="ru">🇷🇺 Russian</option>
           </select>
       </div>
 
       <div className="flex flex-col gap-4 flex-shrink-0">
+          {/* Source Image */}
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold ml-1">Primary Source Image</span>
-            <div 
-                className={`group relative border border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-300 bg-zinc-900/30 hover:bg-white/[0.04] h-40 flex items-center justify-center ${
-                    dragActive ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/10 hover:border-white/30'
+            <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Primary Source Image</span>
+            <div
+                className={`group relative border border-dashed rounded-xl p-3 text-center cursor-pointer transition-all duration-300 h-40 flex items-center justify-center ${
+                    dragActive
+                      ? 'border-pink-500/60 bg-pink-500/8 shadow-[0_0_20px_rgba(236,72,153,0.1)]'
+                      : sourceImage
+                      ? 'border-white/15 bg-black/40'
+                      : 'border-white/8 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
                 }`}
                 onClick={() => fileInputRef.current?.click()}
                 onDragEnter={handleDrag}
@@ -237,37 +246,44 @@ export const EditPromptInput: React.FC<EditPromptInputProps> = ({
                 onDrop={handleDrop}
             >
                 <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleFileChange(e.target.files)}
-                disabled={isLoading}
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleFileChange(e.target.files)}
+                  disabled={isLoading}
                 />
                 {sourceImage ? (
-                <>
-                    <img src={sourceImage} alt="Image to edit preview" className="mx-auto max-h-full rounded-lg shadow-lg object-contain" />
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setSourceImage(null); }}
-                        className="absolute top-2 right-2 bg-zinc-800 text-white rounded-full w-6 h-6 flex items-center justify-center border border-zinc-600 shadow-md hover:bg-red-500 transition-colors"
-                    >
-                        &times;
-                    </button>
-                </>
+                  <>
+                      <img src={sourceImage} alt="Source" className="mx-auto max-h-full rounded-lg object-contain" />
+                      <button
+                          onClick={(e) => { e.stopPropagation(); setSourceImage(null); }}
+                          className="absolute top-2 right-2 bg-[#1a1c25] text-white rounded-full w-6 h-6 flex items-center justify-center border border-white/20 shadow-lg hover:bg-red-500 hover:border-red-400 transition-all active:scale-90"
+                      >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                      </button>
+                      <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
+                  </>
                 ) : (
-                <div className="flex flex-col items-center gap-2">
-                    <ImageIcon className="w-6 h-6 text-slate-600 opacity-50" />
-                    <p className="text-slate-500 text-[11px] font-bold uppercase tracking-widest">
-                        {dragActive ? 'Drop source' : 'Upload Primary Source'}
-                    </p>
-                </div>
+                  <div className="flex flex-col items-center gap-2.5 text-slate-600 group-hover:text-slate-400 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/8 flex items-center justify-center group-hover:bg-white/[0.06] transition-colors">
+                        <ImageIcon className="w-5 h-5 opacity-50" />
+                      </div>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <p className="text-[11px] font-semibold uppercase tracking-widest">
+                            {dragActive ? 'Drop image here' : 'Upload Source Image'}
+                        </p>
+                        <p className="text-[10px] text-slate-700">or drag and drop</p>
+                      </div>
+                  </div>
                 )}
             </div>
           </div>
 
+          {/* Reference images */}
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold ml-1">Additional Reference Images</span>
-            <MultiImageDropzone 
+            <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Style / Reference Images</span>
+            <MultiImageDropzone
                 title="Style/Character Refs"
                 images={references}
                 setImages={setReferences}
@@ -277,40 +293,40 @@ export const EditPromptInput: React.FC<EditPromptInputProps> = ({
       </div>
 
       <div className="space-y-4 flex-shrink-0">
-        <div className="space-y-2">
-            <div className="flex justify-between text-xs font-medium">
-                <label className="text-slate-400">Edit Intensity</label>
-                <span className="text-indigo-400">{powerLabels[enhancementPower]}</span>
+        <div className="space-y-3">
+            <div className="flex justify-between text-xs">
+                <label className="text-slate-400 font-medium">Edit Intensity</label>
+                <span className="text-pink-400 font-mono font-semibold">{powerLabels[enhancementPower]}</span>
             </div>
-            <div className="relative h-1.5 w-full bg-zinc-800/50 rounded-full overflow-hidden">
-                <div 
-                    className="absolute top-0 left-0 h-full bg-indigo-500 rounded-full" 
+            <div className="relative h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/8">
+                <div
+                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-pink-500 to-rose-500 rounded-full transition-all duration-300"
                     style={{ width: `${(enhancementPower / 5) * 100}%` }}
                 />
                 <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    step="1"
+                    type="range" min="1" max="5" step="1"
                     value={enhancementPower}
                     onChange={(e) => setEnhancementPower(Number(e.target.value))}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     disabled={isLoading}
                 />
             </div>
+            <div className="flex justify-between text-[10px] text-slate-600 font-mono px-0.5">
+                <span>Subtle</span><span>Mild</span><span>Balanced</span><span>Strong</span><span>Max</span>
+            </div>
         </div>
-      
-       <div className="space-y-2">
+
+        <div className="space-y-2">
             <label className="text-xs font-medium text-slate-400">Target Model</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
             {editModels.map((model) => (
                 <button
                 key={model.id}
                 onClick={() => setEditModel(model.id)}
-                className={`px-2 py-2 text-[10px] uppercase tracking-wide font-semibold rounded-lg border transition-all duration-200 ${
+                className={`px-2 py-2.5 text-[10px] uppercase tracking-wider font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${
                     editModel === model.id
-                    ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-200 shadow-sm'
-                    : 'bg-zinc-900/30 border-white/5 text-slate-500 hover:bg-white/[0.05] hover:text-slate-300 hover:border-white/10'
+                    ? 'bg-pink-500/20 border-pink-500/50 text-pink-200 shadow-[0_0_15px_rgba(236,72,153,0.15)]'
+                    : 'bg-white/[0.03] border-white/8 text-slate-500 hover:bg-white/[0.07] hover:text-slate-300 hover:border-white/15'
                 }`}
                 >
                 {model.name}
@@ -321,33 +337,38 @@ export const EditPromptInput: React.FC<EditPromptInputProps> = ({
       </div>
 
       <div className="flex-grow flex flex-col space-y-2 min-h-[120px]">
-        <label className="text-xs font-medium text-slate-400">Instruction</label>
+        <label className="text-xs font-medium text-slate-400">Edit Instruction</label>
         <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder={language === 'en' ? 'e.g., change the background to a winter forest' : 'например, измени фон на зимний лес'}
-            className="w-full flex-grow p-4 bg-zinc-900/50 border border-white/10 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none resize-none transition-all font-mono hover:border-white/20"
+            placeholder={language === 'en' ? 'e.g., change the background to a winter forest...' : 'например, измени фон на зимний лес...'}
+            className="w-full flex-grow p-4 bg-[#13151c]/80 border border-white/8 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-pink-500/50 focus:border-pink-500/50 outline-none resize-none transition-all font-mono hover:border-white/15 leading-relaxed"
             disabled={isLoading}
         />
       </div>
 
-      <button
-        onClick={onGenerate}
-        disabled={isLoading || !prompt.trim() || !sourceImage}
-        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium py-3.5 px-4 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_30px_rgba(79,70,229,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-white/10"
-      >
-        {isLoading ? (
-          <div className="flex items-center gap-2">
-             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-             <span className="text-sm">Processing...</span>
-          </div>
-        ) : (
-          <>
-            <SparklesIcon className="w-4 h-4" />
-            <span className="text-sm tracking-wide">Enhance Edit Prompt</span>
-          </>
-        )}
-      </button>
+      <div className="pt-0.5 pb-0 flex-shrink-0">
+        <button
+          onClick={onGenerate}
+          disabled={isLoading || !prompt.trim() || !sourceImage}
+          className="relative w-full flex items-center justify-center gap-2.5 text-white font-semibold py-3.5 px-4 rounded-xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed overflow-hidden group active:scale-[0.98]"
+        >
+          <span className="absolute inset-0 bg-gradient-to-r from-pink-600 via-rose-600 to-orange-600" />
+          <span className="absolute inset-0 bg-gradient-to-r from-pink-500 via-rose-500 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <span className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]" />
+          {isLoading ? (
+            <span className="relative flex items-center gap-2">
+               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+               <span className="text-sm">Processing...</span>
+            </span>
+          ) : (
+            <span className="relative flex items-center gap-2">
+              <SparklesIcon className="w-4 h-4" />
+              <span className="text-sm tracking-wide">Enhance Edit Prompt</span>
+            </span>
+          )}
+        </button>
+      </div>
     </div>
   );
 };

@@ -182,13 +182,15 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   onReversePromptOpen,
 }) => {
   return (
-    <div className="bg-[#13151C]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl flex flex-col gap-6 h-full ring-1 ring-white/5 overflow-y-auto custom-scrollbar">
+    <div className="bg-[#0e1018]/80 backdrop-blur-2xl border border-white/8 rounded-2xl p-5 shadow-2xl shadow-black/40 flex flex-col gap-5 h-full overflow-y-auto custom-scrollbar">
+      {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
          <div className="flex items-center gap-3">
-            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-widest">Input Config</h2>
+            <div className="w-1.5 h-4 bg-gradient-to-b from-indigo-400 via-purple-400 to-pink-400 rounded-full" />
+            <h2 className="text-xs font-semibold text-slate-300 uppercase tracking-widest">Image Config</h2>
             <button
                 onClick={onReversePromptOpen}
-                className="text-[10px] bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded transition-all font-bold uppercase tracking-tight"
+                className="text-[10px] bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/25 px-2.5 py-1 rounded-lg transition-all duration-200 font-semibold uppercase tracking-tight hover:border-indigo-500/50 active:scale-95"
             >
                 Reverse Prompting
             </button>
@@ -196,19 +198,19 @@ export const PromptInput: React.FC<PromptInputProps> = ({
          <select
             value={language}
             onChange={(e) => setLanguage(e.target.value as 'en' | 'ru')}
-            className="bg-zinc-900/80 border border-white/10 rounded-md px-3 py-1.5 text-xs text-slate-300 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none hover:border-white/20 transition-colors"
+            className="bg-[#13151c] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none hover:border-white/20 transition-colors cursor-pointer"
           >
-            <option value="en">English</option>
-            <option value="ru">Russian</option>
+            <option value="en">🇬🇧 English</option>
+            <option value="ru">🇷🇺 Russian</option>
           </select>
       </div>
 
-      <div className="flex flex-col gap-4 flex-shrink-0">
+      <div className="flex flex-col gap-3 flex-shrink-0">
           <div className="flex flex-col gap-2">
-            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold ml-1">Reference Images (Character, Style, Composition)</span>
+            <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Reference Images</span>
             
             {/* Categorized Grid */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <MultiImageDropzone 
                 title="Characters" 
                 images={categorizedReferences.characters} 
@@ -263,15 +265,15 @@ export const PromptInput: React.FC<PromptInputProps> = ({
           </div>
       </div>
       
-      <div className="space-y-5 flex-shrink-0">
-        <div className="space-y-2.5">
-            <div className="flex justify-between text-xs font-medium">
-                <label className="text-slate-400">Enhancement Strength</label>
-                <span className="text-indigo-400 font-mono">{powerLabels[enhancementPower]}</span>
+      <div className="space-y-4 flex-shrink-0">
+        <div className="space-y-3">
+            <div className="flex justify-between text-xs">
+                <label className="text-slate-400 font-medium">Enhancement Strength</label>
+                <span className="text-indigo-400 font-mono font-semibold">{powerLabels[enhancementPower]}</span>
             </div>
-            <div className="relative h-1.5 w-full bg-zinc-800/50 rounded-full overflow-hidden">
+            <div className="relative h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/8">
                 <div 
-                    className="absolute top-0 left-0 h-full bg-indigo-500 rounded-full" 
+                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300" 
                     style={{ width: `${(enhancementPower / 5) * 100}%` }}
                 />
                 <input
@@ -286,21 +288,21 @@ export const PromptInput: React.FC<PromptInputProps> = ({
                 />
             </div>
             <div className="flex justify-between text-[10px] text-slate-600 font-mono px-0.5">
-                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                <span>Subtle</span><span>Mild</span><span>Balanced</span><span>Strong</span><span>Max</span>
             </div>
         </div>
 
-        <div className="space-y-2.5">
+        <div className="space-y-2">
             <label className="text-xs font-medium text-slate-400">Target Model</label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
                 {imageModels.map((model) => (
                     <button
                     key={model.id}
                     onClick={() => setImageModel(model.id)}
-                    className={`px-1 py-2 text-[10px] uppercase tracking-wide font-semibold rounded-lg border transition-all duration-200 ${
+                    className={`px-1 py-2.5 text-[10px] uppercase tracking-wider font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${
                         imageModel === model.id
-                        ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-200 shadow-[0_0_10px_rgba(99,102,241,0.1)]'
-                        : 'bg-zinc-900/30 border-white/5 text-slate-500 hover:bg-white/[0.05] hover:text-slate-300 hover:border-white/10'
+                        ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-200 shadow-[0_0_15px_rgba(99,102,241,0.15)]'
+                        : 'bg-white/[0.03] border-white/8 text-slate-500 hover:bg-white/[0.07] hover:text-slate-300 hover:border-white/15'
                     }`}
                     >
                     {model.name}
@@ -316,27 +318,34 @@ export const PromptInput: React.FC<PromptInputProps> = ({
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder={language === 'en' ? 'Describe your idea briefly...' : 'Опишите вашу идею кратко...'}
-            className="w-full flex-grow p-4 bg-zinc-900/50 border border-white/10 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none resize-none transition-all font-mono hover:border-white/20"
+            className="w-full flex-grow p-4 bg-[#13151c]/80 border border-white/8 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none resize-none transition-all font-mono hover:border-white/15 leading-relaxed"
             disabled={isLoading}
         />
       </div>
 
-      <div className="pt-2 pb-1 flex-shrink-0">
+      <div className="pt-1 pb-0.5 flex-shrink-0">
           <button
             onClick={onGenerate}
             disabled={isLoading || (!prompt.trim() && references.length === 0 && Object.values(categorizedReferences).every(arr => (arr as string[]).length === 0))}
-            className="relative z-10 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-medium py-3.5 px-4 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_30px_rgba(79,70,229,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none border border-white/10"
+            className="relative w-full flex items-center justify-center gap-2.5 text-white font-semibold py-3.5 px-4 rounded-xl transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed overflow-hidden group active:scale-[0.98]"
+            style={{ background: isLoading ? undefined : undefined }}
           >
+            {/* Button gradient background */}
+            <span className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 transition-all duration-500" />
+            <span className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <span className="absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]" />
+            {/* Glow effect */}
+            <span className="absolute inset-0 blur-xl bg-gradient-to-r from-indigo-600/40 via-purple-600/40 to-pink-600/40 opacity-0 group-hover:opacity-100 transition-opacity" />
             {isLoading ? (
-              <div className="flex items-center gap-2">
-                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span className="relative flex items-center gap-2">
+                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                  <span className="text-sm">Processing...</span>
-              </div>
+              </span>
             ) : (
-              <>
+              <span className="relative flex items-center gap-2">
                 <SparklesIcon className="w-4 h-4" />
                 <span className="text-sm tracking-wide">Enhance Prompt</span>
-              </>
+              </span>
             )}
           </button>
       </div>

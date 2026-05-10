@@ -433,11 +433,11 @@ const App: React.FC = () => {
   const currentTargetModel = mode === 'image' ? imageModel : mode === 'video' ? videoModel : editModel;
 
   return (
-    <div className="flex flex-col min-h-screen lg:h-screen lg:overflow-hidden bg-[#02040a] text-slate-200 font-sans selection:bg-indigo-500/30">
-        <div className="fixed inset-0 pointer-events-none z-0">
-             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-900/10 rounded-full blur-[120px]" />
-             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-900/10 rounded-full blur-[120px]" />
-             <div className="absolute top-[20%] right-[20%] w-[20%] h-[20%] bg-cyan-900/5 rounded-full blur-[80px]" />
+    <div className="flex flex-col min-h-screen lg:h-screen lg:overflow-hidden bg-[#03040b] text-slate-200 font-sans selection:bg-indigo-500/30">
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+             <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[120px] animate-pulse-glow" />
+             <div className="absolute bottom-[-15%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px] animate-pulse-glow" style={{ animationDelay: '1s' }} />
+             <div className="absolute top-[30%] right-[20%] w-[25%] h-[25%] bg-pink-600/5 rounded-full blur-[100px] animate-pulse-glow" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative z-10 flex flex-col h-full max-w-[1600px] mx-auto w-full px-4 md:px-6">
