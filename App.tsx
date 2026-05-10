@@ -96,8 +96,17 @@ const App: React.FC = () => {
   // Persist history to localStorage
   useEffect(() => {
     try {
-      // Limit history to 30 items to prevent memory bloat and localStorage quota issues
-      const trimmedHistory = history.slice(0, 30);
+      // Очищаем Base64 изображения перед сохранением, чтобы не превысить лимит в 5 МБ для localStorage
+      const trimmedHistory = history.slice(0, 30).map(item => {
+        if (item.type === 'image') {
+          return { ...item, references: [], categorizedReferences: undefined };
+        } else if (item.type === 'video') {
+          return { ...item, firstFrame: null, lastFrame: null, characterReferences: [] };
+        } else if (item.type === 'edit') {
+          return { ...item, sourceImage: '', references: [] };
+        }
+        return item;
+      });
       localStorage.setItem('prompt_enhancer_history', JSON.stringify(trimmedHistory));
     } catch (e) {
       console.warn("Failed to save history to localStorage (possibly quota exceeded)", e);
@@ -108,25 +117,14 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       console.error("Unhandled promise rejection:", event.reason);
-      setError(`An unexpected background error occurred: ${event.reason?.message || 'Unknown error'}`);
-    };
-
-    const handleGlobalError = (message: string | Event, source?: string, lineno?: number, colno?: number, error?: Error) => {
-      console.error("Global error:", message, error);
-      // Only show error if it's not a benign HMR/WebSocket error
-      const msg = typeof message === 'string' ? message : (message as any).message || 'Unknown error';
-      if (!msg.includes('websocket') && !msg.includes('HMR')) {
-        setError(`Application error: ${msg}`);
-      }
-      return false;
+      // Убираем агрессивный вывод ошибок в интерфейс (setError), 
+      // чтобы сторонние ошибки (расширения, вебсокеты) не блокировали UI.
     };
 
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
-    window.onerror = handleGlobalError;
     
     return () => {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-      window.onerror = null;
     };
   }, []);
 

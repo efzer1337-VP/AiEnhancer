@@ -5,11 +5,23 @@ import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ImageMode
 const FLASH_MODEL = 'gemini-3-flash-preview';
 
 const getAIClient = () => {
-  const apiKey = process.env.API_KEY;
+  // Поддержка Vite, Node.js (процесс) и AI Studio
+  const apiKey = import.meta.env?.VITE_API_KEY || (typeof process !== 'undefined' && process.env?.API_KEY) || (window as any).aistudio?.getApiKey?.() || '';
   if (!apiKey) {
-    throw new Error("Gemini API Key is missing. Please click 'Set API Key' in the header to provide a valid key.");
+    throw new Error("Gemini API Key is missing. Please click 'Set API Key' in the header or set VITE_API_KEY in your .env file.");
   }
   return new GoogleGenAI({ apiKey });
+};
+
+const parseJSONOutput = (text: string) => {
+  if (!text) return {};
+  const cleaned = text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("Failed to parse JSON:", text);
+    throw new Error("Model returned invalid JSON format.");
+  }
 };
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 2, delay = 800): Promise<T> {
@@ -18,12 +30,12 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2, delay = 800): Pro
   } catch (error: any) {
     const errorMsg = error.message || "";
     const isRetryable = errorMsg.includes('500') ||
-                        errorMsg.includes('503') || 
-                        errorMsg.includes('Deadline expired') || 
-                        errorMsg.includes('UNAVAILABLE') ||
-                        error.status === 500 ||
-                        error.status === 503;
-    
+      errorMsg.includes('503') ||
+      errorMsg.includes('Deadline expired') ||
+      errorMsg.includes('UNAVAILABLE') ||
+      error.status === 500 ||
+      error.status === 503;
+
     if (retries > 0 && isRetryable) {
       console.warn(`Transient error detected. Retrying in ${delay}ms... (${retries} retries left)`);
       await new Promise(resolve => setTimeout(resolve, delay));
@@ -53,6 +65,58 @@ Transform user ideas into massive, technical briefs for AI generation models.
 - CAMERA: lens terminology (85mm, anamorphic).
 - OUTPUT: All generated content (prompts, descriptions, technical steps, elements, etc.) MUST be strictly in English, even if the user input is in Russian.
 - FORMAT: Follow the provided JSON schema exactly.
+`;
+
+const MIDJOURNEY_SPECIFIC_INSTRUCTION = `
+# Role: Midjourney V6 Master Prompt Engineer
+# Specialized Structure for Midjourney V6:
+- FORMAT: Write in natural, coherent sentences. DO NOT use keyword stuffing or tag-soup.
+- EXPLICITNESS: Clearly describe the subject, action, setting, and mood.
+- CAMERA & STYLE: Use parameters like "--style raw" for photorealism. Describe the medium (e.g., oil painting, 35mm photograph).
+- AVOID: "Junk" words like "photorealistic", "4k", "8k", "award-winning". These add noise.
+- TEXT RENDERING: If text is needed, place it in quotes (e.g., A neon sign that says "Hello World").
+- NEGATIVE AVOIDANCE: Avoid contradictory instructions.
+`;
+
+const FLUX_SPECIFIC_INSTRUCTION = `
+# Role: FLUX.1 Expert Prompt Architect
+# Specialized Structure for FLUX.1:
+- FORMAT: Natural, descriptive language. Treat the prompt like a description given to a human artist.
+- HIERARCHY: [Subject] + [Action/Pose] + [Environment/Setting] + [Lighting] + [Style/Camera/Technical Specs].
+- SPECIFICS: Avoid vague adjectives. Be precise about the subject and environment. Use technical photography specs (e.g., "Sony A7R IV, 85mm lens at f/2.8").
+- TEXT: FLUX.1 renders text exceptionally well. Quote text clearly (e.g., a sign that says "OPEN").
+- LENGTH: Aim for comprehensive but concise (40-50 words per major component).
+- NEGATIVES: FLUX.1 does not typically use negative prompts effectively. Focus entirely on describing what you DO want to see.
+`;
+
+const NANOBANANA_SPECIFIC_INSTRUCTION = `
+# Role: Nano Banana Pro Image Architect
+# Specialized Structure for Nano Banana:
+- FORMAT: Descriptive, organized, conversational.
+- COMPONENTS: Subject + Context/Setting + Style + Composition & Lighting.
+- TERMINOLOGY: Use photographic/cinematic terms (e.g., "85mm f/1.2 lens", "creamy bokeh", "dramatic backlighting").
+- TEXT RENDERING: Enclose text in quotes and specify the font (e.g., "bold, sans-serif font").
+- POSITIVE FRAMING: Describe what you DO want (e.g., "empty street" rather than "no cars"). Do not use negative constraints.
+- STYLE: Avoid filler words. Be extremely precise with adjectives.
+`;
+
+const ZIMAGE_SPECIFIC_INSTRUCTION = `
+# Role: Z-Image Turbo Prompt Engineer
+# Specialized Structure for Z-Image:
+- FORMAT: Structured, hierarchical descriptions. Do NOT use unstructured or poetic prose.
+- ORDER: Subject -> Scene -> Composition -> Lighting -> Style -> Constraints.
+- SPECIFICITY: Be hyper-specific (e.g., "27-year-old woman with copper-red hair" instead of "a person").
+- PHOTOGRAPHIC: Use technical terms ("85mm lens", "soft diffused daylight", "Kodak Portra 400 film grain").
+- NO FILLERS: Strictly avoid buzzwords like "masterpiece", "stunning", "best quality".
+- CONSTRAINTS IN POSITIVE: The model has NO negative prompt. You MUST put constraints explicitly in the positive text (e.g., "no text, no watermark, plain background").
+`;
+
+const GENERAL_IMAGE_INSTRUCTION = `
+# Role: General SD/Vision Model Prompt Architect
+# Specialized Structure:
+- Detail every aspect of the scene: Subject, pose, environment, lighting, and camera angle.
+- Use strong, descriptive keywords and weight them if necessary.
+- Separate distinct concepts with commas.
 `;
 
 const KLING_SPECIFIC_INSTRUCTION = `
@@ -273,17 +337,17 @@ const VIDEO_PROMPT_SCHEMA = {
 };
 
 const EDIT_SCHEMA = {
-    type: Type.OBJECT,
-    properties: {
-        edit_task_summary: { type: Type.STRING },
-        transformation_logic: { type: Type.STRING },
-        detailed_execution_steps: { type: Type.ARRAY, items: { type: Type.STRING } },
-        preservation_locks: { type: Type.ARRAY, items: { type: Type.STRING } },
-        master_edit_prompt: { type: Type.STRING },
-        negative_edit_constraints: { type: Type.ARRAY, items: { type: Type.STRING } },
-        technical_params: { type: Type.OBJECT, properties: { inpaint_method: { type: Type.STRING }, denoising_target: { type: Type.STRING }, consistency_weight: { type: Type.STRING } } }
-    },
-    required: ["edit_task_summary", "transformation_logic", "detailed_execution_steps", "preservation_locks", "master_edit_prompt", "technical_params"]
+  type: Type.OBJECT,
+  properties: {
+    edit_task_summary: { type: Type.STRING },
+    transformation_logic: { type: Type.STRING },
+    detailed_execution_steps: { type: Type.ARRAY, items: { type: Type.STRING } },
+    preservation_locks: { type: Type.ARRAY, items: { type: Type.STRING } },
+    master_edit_prompt: { type: Type.STRING },
+    negative_edit_constraints: { type: Type.ARRAY, items: { type: Type.STRING } },
+    technical_params: { type: Type.OBJECT, properties: { inpaint_method: { type: Type.STRING }, denoising_target: { type: Type.STRING }, consistency_weight: { type: Type.STRING } } }
+  },
+  required: ["edit_task_summary", "transformation_logic", "detailed_execution_steps", "preservation_locks", "master_edit_prompt", "technical_params"]
 };
 
 const fileToGenerativePart = (base64Data: string) => {
@@ -296,22 +360,22 @@ const fileToGenerativePart = (base64Data: string) => {
 };
 
 export const generateEnhancedPrompt = async (
-  prompt: string, 
-  language: 'en' | 'ru', 
-  targetModel: ImageModel, 
-  references: string[], 
+  prompt: string,
+  language: 'en' | 'ru',
+  targetModel: ImageModel,
+  references: string[],
   power: number,
   categorizedReferences?: CategorizedReferences
 ): Promise<EnhancedPrompt> => {
   return withRetry(async () => {
     const ai = getAIClient();
     const parts: any[] = [];
-    
+
     // Add main references
-    if (references?.length > 0) { 
-      references.forEach(ref => parts.push(fileToGenerativePart(ref))); 
+    if (references?.length > 0) {
+      references.forEach(ref => parts.push(fileToGenerativePart(ref)));
     }
-    
+
     // Add categorized references and build context
     let categorizedContext = "";
     if (categorizedReferences) {
@@ -333,45 +397,67 @@ export const generateEnhancedPrompt = async (
       }
     }
 
-    parts.push({ text: `${MASTER_ARCHITECTURE_INSTRUCTION}\nTASK: Generation brief for ${targetModel}.\nINPUT: "${prompt}" (Language: ${language === 'en' ? 'English' : 'Russian'}).\nENHANCEMENT: ${getPowerDescription(power)}.\n${categorizedContext}\nIMPORTANT: EVERY TEXT FIELD IN JSON MUST BE IN ENGLISH.` });
-    
-    const result = await ai.models.generateContent({ 
-      model: FLASH_MODEL, 
-      contents: { parts }, 
-      config: { 
-        responseMimeType: "application/json", 
+    let modelInstruction = GENERAL_IMAGE_INSTRUCTION;
+    if (targetModel === 'midjourney') {
+      modelInstruction = MIDJOURNEY_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'flux') {
+      modelInstruction = FLUX_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'nanobanana') {
+      modelInstruction = NANOBANANA_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'z-image') {
+      modelInstruction = ZIMAGE_SPECIFIC_INSTRUCTION;
+    }
+
+    parts.push({ text: `${MASTER_ARCHITECTURE_INSTRUCTION}\n${modelInstruction}\nTASK: Generation brief for ${targetModel}.\nINPUT: "${prompt}" (Language: ${language === 'en' ? 'English' : 'Russian'}).\nENHANCEMENT: ${getPowerDescription(power)}.\n${categorizedContext}\nIMPORTANT: EVERY TEXT FIELD IN JSON MUST BE IN ENGLISH.` });
+
+    const result = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: { parts },
+      config: {
+        responseMimeType: "application/json",
         responseSchema: IMAGE_PROMPT_SCHEMA,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      } 
+      }
     });
-    return JSON.parse(result.text || "{}");
+    return parseJSONOutput(result.text || "");
   });
 };
 
 export const reversePromptImage = async (imageBase64: string, context: string, targetModel: ImageModel): Promise<EnhancedPrompt> => {
   return withRetry(async () => {
     const ai = getAIClient();
-    const parts: any[] = [fileToGenerativePart(imageBase64), { text: `${MASTER_ARCHITECTURE_INSTRUCTION}\nREVERSE INTERROGATION for ${targetModel}. ${context ? `Context: "${context}"` : ""}\nIMPORTANT: OUTPUT MUST BE IN ENGLISH.` }];
-    const result = await ai.models.generateContent({ 
-      model: FLASH_MODEL, 
-      contents: { parts }, 
-      config: { 
-        responseMimeType: "application/json", 
+    let modelInstruction = GENERAL_IMAGE_INSTRUCTION;
+    if (targetModel === 'midjourney') {
+      modelInstruction = MIDJOURNEY_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'flux') {
+      modelInstruction = FLUX_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'nanobanana') {
+      modelInstruction = NANOBANANA_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'z-image') {
+      modelInstruction = ZIMAGE_SPECIFIC_INSTRUCTION;
+    }
+
+    const parts: any[] = [fileToGenerativePart(imageBase64), { text: `${MASTER_ARCHITECTURE_INSTRUCTION}\n${modelInstruction}\nREVERSE INTERROGATION for ${targetModel}. ${context ? `Context: "${context}"` : ""}\nIMPORTANT: OUTPUT MUST BE IN ENGLISH.` }];
+    const result = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: { parts },
+      config: {
+        responseMimeType: "application/json",
         responseSchema: IMAGE_PROMPT_SCHEMA,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      } 
+      }
     });
-    return JSON.parse(result.text || "{}");
+    return parseJSONOutput(result.text || "");
   });
 };
 
 export const generateEnhancedVideoPrompt = async (
-  prompt: string, 
-  firstFrameBase64: string | null, 
-  lastFrameBase64: string | null, 
-  characterReferencesBase64: string[], 
-  language: 'en' | 'ru', 
-  targetModel: VideoModel, 
+  prompt: string,
+  firstFrameBase64: string | null,
+  lastFrameBase64: string | null,
+  characterReferencesBase64: string[],
+  language: 'en' | 'ru',
+  targetModel: VideoModel,
   power: number,
   isRelayMode: boolean = false,
   relayFrames: number = 240
@@ -382,7 +468,7 @@ export const generateEnhancedVideoPrompt = async (
     if (characterReferencesBase64?.length > 0) { characterReferencesBase64.forEach(base64 => parts.push(fileToGenerativePart(base64))); }
     if (firstFrameBase64) parts.push(fileToGenerativePart(firstFrameBase64));
     if (lastFrameBase64) parts.push(fileToGenerativePart(lastFrameBase64));
-    
+
     let instruction = "";
     if (targetModel === 'kling') {
       instruction = KLING_SPECIFIC_INSTRUCTION;
@@ -409,7 +495,7 @@ The user wants a "Prompt Relay" output.
     } else {
       instruction = "Director's script focus.";
     }
-    
+
     const detailInstruction = `
 # ULTRA-DETAILED VIDEO ARCHITECTURE DIRECTIVE:
 - SCENE SETUP: Describe the microscopic details of the environment (dust motes, scratches on surfaces, humidity in the air).
@@ -421,32 +507,33 @@ The user wants a "Prompt Relay" output.
 `;
 
     parts.push({ text: `${instruction}\n${detailInstruction}\nTASK: Video generation brief for ${targetModel}${isRelayMode ? ' in RELAY MODE' : ''}.\nENHANCEMENT: ${getPowerDescription(power)}.\nPROMPT: "${prompt}".\nIMPORTANT: OUTPUT MUST BE IN ENGLISH.\nOutput MUST be JSON.` });
-    
-    const result = await ai.models.generateContent({ 
-      model: FLASH_MODEL, 
-      contents: { parts }, 
-      config: { 
-        responseMimeType: "application/json", 
+
+    const result = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: { parts },
+      config: {
+        responseMimeType: "application/json",
         responseSchema: VIDEO_PROMPT_SCHEMA,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      } 
+      }
     });
-    return JSON.parse(result.text || "{}");
+    return parseJSONOutput(result.text || "");
   });
 };
 
 export const generateEnhancedEditPrompt = async (prompt: string, imageBase64: string, references: string[], language: 'en' | 'ru', targetModel: EditModel, power: number): Promise<EnhancedEditPrompt> => {
-    return withRetry(async () => {
-      const ai = getAIClient();
-      const parts: any[] = [fileToGenerativePart(imageBase64)];
-      if (references?.length > 0) { references.forEach(ref => parts.push(fileToGenerativePart(ref))); }
+  return withRetry(async () => {
+    const ai = getAIClient();
+    const parts: any[] = [fileToGenerativePart(imageBase64)];
+    if (references?.length > 0) { references.forEach(ref => parts.push(fileToGenerativePart(ref))); }
 
-      let specificInstruction = "";
-      if (targetModel === 'flux_klein') {
-          specificInstruction = FLUX_KLEIN_SPECIFIC_INSTRUCTION;
-      }
+    let specificInstruction = "";
+    if (targetModel === 'flux_klein') {
+      specificInstruction = FLUX_KLEIN_SPECIFIC_INSTRUCTION;
+    }
 
-      parts.push({ text: `
+    parts.push({
+      text: `
       ${specificInstruction}
       # ROLE: Technical Edit Assignment Architect.
       # TASK: Produce a technical assignment ("Задание на редактирование") for ${targetModel}.
@@ -455,107 +542,129 @@ export const generateEnhancedEditPrompt = async (prompt: string, imageBase64: st
       # IMPORTANT: OUTPUT MUST BE IN ENGLISH.
       `});
 
-      const result = await ai.models.generateContent({
-          model: FLASH_MODEL,
-          contents: { parts },
-          config: {
-              responseMimeType: "application/json",
-              responseSchema: EDIT_SCHEMA,
-              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-          }
-      });
-      return JSON.parse(result.text || "{}");
+    const result = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: { parts },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: EDIT_SCHEMA,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+      }
     });
+    return parseJSONOutput(result.text || "");
+  });
 };
 
 export const refineEnhancedPrompt = async (currentOutput: EnhancedPrompt, refinementInstruction: string, targetModel: ImageModel): Promise<EnhancedPrompt> => {
-    return withRetry(async () => {
-      const ai = getAIClient();
-      const result = await ai.models.generateContent({
-          model: FLASH_MODEL,
-          contents: { parts: [{ text: `Current Prompt JSON: ${JSON.stringify(currentOutput)}\nREFINE: "${refinementInstruction}" for ${targetModel}. Maintain schema. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
-          config: { 
-              responseMimeType: "application/json", 
-              responseSchema: IMAGE_PROMPT_SCHEMA,
-              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-          }
-      });
-      return JSON.parse(result.text || "{}");
+  return withRetry(async () => {
+    const ai = getAIClient();
+    let modelInstruction = GENERAL_IMAGE_INSTRUCTION;
+    if (targetModel === 'midjourney') {
+      modelInstruction = MIDJOURNEY_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'flux') {
+      modelInstruction = FLUX_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'nanobanana') {
+      modelInstruction = NANOBANANA_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'z-image') {
+      modelInstruction = ZIMAGE_SPECIFIC_INSTRUCTION;
+    }
+
+    const result = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: { parts: [{ text: `${modelInstruction}\nCurrent Prompt JSON: ${JSON.stringify(currentOutput)}\nREFINE: "${refinementInstruction}" for ${targetModel}. Maintain schema. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: IMAGE_PROMPT_SCHEMA,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+      }
     });
+    return parseJSONOutput(result.text || "");
+  });
 };
 
 export const refineEnhancedVideoPrompt = async (currentOutput: EnhancedVideoPrompt, refinementInstruction: string, targetModel: VideoModel): Promise<EnhancedVideoPrompt> => {
-    return withRetry(async () => {
-      const ai = getAIClient();
-      let specificInstruction = "";
-      if (targetModel === 'kling') {
-        specificInstruction = KLING_SPECIFIC_INSTRUCTION;
-      } else if (targetModel === 'seedance') {
-        specificInstruction = SEEDANCE_SPECIFIC_INSTRUCTION;
-      } else if (targetModel === 'ltx') {
-        specificInstruction = LTX_SPECIFIC_INSTRUCTION;
+  return withRetry(async () => {
+    const ai = getAIClient();
+    let specificInstruction = "";
+    if (targetModel === 'kling') {
+      specificInstruction = KLING_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'seedance') {
+      specificInstruction = SEEDANCE_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'ltx') {
+      specificInstruction = LTX_SPECIFIC_INSTRUCTION;
+    }
+    const result = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: { parts: [{ text: `${specificInstruction}\nCurrent Video Brief: ${JSON.stringify(currentOutput)}\nREFINE: "${refinementInstruction}". Return updated JSON. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: VIDEO_PROMPT_SCHEMA,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
       }
-      const result = await ai.models.generateContent({
-          model: FLASH_MODEL,
-          contents: { parts: [{ text: `${specificInstruction}\nCurrent Video Brief: ${JSON.stringify(currentOutput)}\nREFINE: "${refinementInstruction}". Return updated JSON. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
-          config: { 
-              responseMimeType: "application/json", 
-              responseSchema: VIDEO_PROMPT_SCHEMA,
-              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-          }
-      });
-      return JSON.parse(result.text || "{}");
     });
+    return parseJSONOutput(result.text || "");
+  });
 };
 
 export const refineEnhancedEditPrompt = async (currentOutput: EnhancedEditPrompt, refinementInstruction: string, targetModel: EditModel): Promise<EnhancedEditPrompt> => {
-    return withRetry(async () => {
-      const ai = getAIClient();
-      let specificInstruction = "";
-      if (targetModel === 'flux_klein') {
-          specificInstruction = FLUX_KLEIN_SPECIFIC_INSTRUCTION;
+  return withRetry(async () => {
+    const ai = getAIClient();
+    let specificInstruction = "";
+    if (targetModel === 'flux_klein') {
+      specificInstruction = FLUX_KLEIN_SPECIFIC_INSTRUCTION;
+    }
+    const result = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: { parts: [{ text: `${specificInstruction}\nCurrent Edit Task: ${JSON.stringify(currentOutput)}\nREFINEMENT REQUEST: "${refinementInstruction}". IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: EDIT_SCHEMA,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
       }
-      const result = await ai.models.generateContent({
-          model: FLASH_MODEL,
-          contents: { parts: [{ text: `${specificInstruction}\nCurrent Edit Task: ${JSON.stringify(currentOutput)}\nREFINEMENT REQUEST: "${refinementInstruction}". IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
-          config: { 
-              responseMimeType: "application/json", 
-              responseSchema: EDIT_SCHEMA,
-              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-          }
-      });
-      return JSON.parse(result.text || "{}");
     });
+    return parseJSONOutput(result.text || "");
+  });
 };
 
 export const superEnhanceVideoPrompt = async (currentOutput: EnhancedVideoPrompt, targetModel: VideoModel): Promise<EnhancedVideoPrompt> => {
-     return withRetry(async () => {
-       const ai = getAIClient();
-       const result = await ai.models.generateContent({
-          model: FLASH_MODEL,
-          contents: { parts: [{ text: `SUPER ENHANCE narrative depth: ${JSON.stringify(currentOutput)}. Return JSON. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
-          config: { 
-              responseMimeType: "application/json", 
-              responseSchema: VIDEO_PROMPT_SCHEMA,
-              thinkingConfig: { thinkingBudget: 1024 } 
-          }
-      });
-      return JSON.parse(result.text || "{}");
-     });
+  return withRetry(async () => {
+    const ai = getAIClient();
+    const result = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: { parts: [{ text: `SUPER ENHANCE narrative depth: ${JSON.stringify(currentOutput)}. Return JSON. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: VIDEO_PROMPT_SCHEMA,
+        thinkingConfig: { thinkingBudget: 1024 }
+      }
+    });
+    return parseJSONOutput(result.text || "");
+  });
 };
 
 export const superEnhanceImagePrompt = async (currentOutput: EnhancedPrompt, targetModel: ImageModel): Promise<EnhancedPrompt> => {
-    return withRetry(async () => {
-      const ai = getAIClient();
-      const result = await ai.models.generateContent({
-          model: FLASH_MODEL,
-          contents: { parts: [{ text: `SUPER ENHANCE technical fidelity: ${JSON.stringify(currentOutput)}. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
-          config: { 
-              responseMimeType: "application/json", 
-              responseSchema: IMAGE_PROMPT_SCHEMA, 
-              thinkingConfig: { thinkingBudget: 1024 } 
-          }
-      });
-      return JSON.parse(result.text || "{}");
+  return withRetry(async () => {
+    const ai = getAIClient();
+    let modelInstruction = GENERAL_IMAGE_INSTRUCTION;
+    if (targetModel === 'midjourney') {
+      modelInstruction = MIDJOURNEY_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'flux') {
+      modelInstruction = FLUX_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'nanobanana') {
+      modelInstruction = NANOBANANA_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'z-image') {
+      modelInstruction = ZIMAGE_SPECIFIC_INSTRUCTION;
+    }
+
+    const result = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: { parts: [{ text: `${modelInstruction}\nSUPER ENHANCE technical fidelity: ${JSON.stringify(currentOutput)}. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: IMAGE_PROMPT_SCHEMA,
+        thinkingConfig: { thinkingBudget: 1024 }
+      }
     });
+    return parseJSONOutput(result.text || "");
+  });
 };
