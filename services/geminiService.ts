@@ -123,39 +123,40 @@ const GENERAL_IMAGE_INSTRUCTION = `
 - Separate distinct concepts with commas.
 `;
 
+const VEO_SPECIFIC_INSTRUCTION = `
+# Role: Google Veo Director
+# Specialized Structure for Veo:
+- FRAMEWORK: [Cinematography] + [Subject] + [Action] + [Context/Environment] + [Style & Ambiance] + [Audio Cues].
+- SPECIFICITY: Be unreasonably specific. Instead of "a woman drinks coffee", use "a close-up of a weary woman in a red hoodie sipping coffee on a foggy balcony at dawn, steam rising".
+- CAMERA: Direct the camera explicitly (e.g., "The camera performs a smooth 180-degree arc shot").
+- AUDIO: Describe sound effects in separate sentences. DO NOT use quotation marks for dialogue unless you explicitly want subtitles generated on screen.
+- LENGTH: Keep the final prompt between 150-300 characters.
+- NEGATIVES: Describe what you DO NOT want by using comma-separated exclusions (e.g., "wall, frame") instead of "no wall".
+`;
+
 const KLING_SPECIFIC_INSTRUCTION = `
 # Role: Kling 3.0 Cinema Director
-Specialized in Kling 3.0's structural requirements.
-- FRAMEWORK: [Subject] + [Action] + [Environment] + [Camera].
-- MOTION: Describe intensity and fluidness of movement. Use specific physics terms (inertia, momentum, friction).
-- COHERENCE: Emphasize physical consistency and temporal logic. Describe how light changes as objects move.
+# Specialized Structure for Kling 3.0:
+- FRAMEWORK: [Subject] + [Action] + [Context/Scene] + [Camera Language] + [Lighting/Style].
+- MOTION & PHYSICS: Use tangible language. Instead of "moves", describe physics: lens flares, fabric sheen, reflections on wet pavement, smoke curling. Use specific verbs (sprinting, carefully assembling).
 - CAMERA: Explicitly use "Dolly zoom", "Panning shot", "Tilt", "Crane shot", "Handheld shake", "Rack focus".
-- QUALITY: Include "8K resolution", "hyper-realistic textures", "cinematic lighting", "sub-surface scattering", "ray-traced reflections".
-- DETAIL: Every object must have a texture, every movement must have a cause, every light must have a source.
+- QUALITY: Include "8K resolution", "hyper-realistic textures", "cinematic lighting", "sub-surface scattering".
+- CONCISENESS: Stay within 3-6 sentences (50-100 words).
 - OUTPUT: Must be strictly in English.
 
 # Specialized Structure for Kling 3.0:
-The output MUST be a single, comprehensive, and highly detailed narrative paragraph in the "full_prompt" field. 
-Do NOT break the description into bullet points or separate categories within the text. 
-Focus on a fluid, cinematic flow that describes the subject, action, environment, lighting, and camera movement in one continuous stream of prose.
-The length of this paragraph should be substantial but strictly under 2500 characters.
+The output MUST be a single, comprehensive, and highly detailed narrative paragraph in the "full_prompt" field. Do NOT break the description into bullet points.
 `;
 
 const SEEDANCE_SPECIFIC_INSTRUCTION = `
 # Role: Seedance 2.0 (Dreamina) Multimodal Expert
 # Specialized Structure for Seedance 2.0:
-1. SCENE ENVIRONMENT: Start with deep mood and visual context (e.g., opulent study vs clinical studio).
+1. SCENE ENVIRONMENT: Deep mood and visual context.
 2. CAMERA BEHAVIOR: Explicit directional language (Pan, Zoom, Track, Orbit, Dolly, Hold).
-3. LIGHTING QUALITY: Specific tone levers (Warm amber, cool blue, soft diffused, hard directional).
-4. MOTION PHYSICS: The kinetic feel (Slow deliberate, high energy rapid cuts, gentle fluid).
-5. AUDIO DIRECTION: Sonic layer details (Deep voiceover, ambient music, SFX, ASMR textures).
-6. EMOTIONAL TARGET: The viewer's final feeling (Aspiration, craving, confidence, calm).
-
-# High-Quality Reference Styles:
-- Luxury: Dim illumination, mahogany, golden halo light, cinematic zoom, resonant voiceover.
-- Energy: State-of-the-art gym, low-angle ground shots, pulsating beats, sweat particle effects.
-- ASMR: Rustic cafe, morning sunlight, steam physics, manual bean grinding SFX, cozy amber tones.
-- Tech: Futuristic lab, neon accents, holographic displays, click/whoosh feedback, sleek minimalist.
+3. LIGHTING QUALITY: Specific tone levers (Warm amber, cool blue, soft diffused).
+4. MOTION PHYSICS: The kinetic feel (Slow deliberate, high energy rapid cuts).
+5. AUDIO DIRECTION: Sonic layer details (ambient music, SFX, ASMR textures).
+6. EMOTIONAL TARGET: The viewer's final feeling.
 
 # Directive:
 Output MUST be a single, cohesive, massive paragraph in English that weaves these 6 elements into a seamless cinematic script.
@@ -164,14 +165,15 @@ Output MUST be a single, cohesive, massive paragraph in English that weaves thes
 const LTX_SPECIFIC_INSTRUCTION = `
 # Role: LTX-Video Cinematic Visionary
 # Specialized Structure for LTX-Video:
-The output MUST be a single, comprehensive, and highly detailed narrative paragraph. 
-Do NOT break the description into bullet points or separate categories within the text. 
-Focus on a fluid, cinematic flow that describes the subject, action, environment, lighting, and camera movement in one continuous stream of prose.
+- FRAMEWORK: Shot Establishment -> Scene Setting -> Action Description -> Character Definition -> Camera Movement -> Audio Description.
+- SINGLE PARAGRAPH: The output MUST be a single, flowing, cohesive paragraph. NO lists. NO bullet points.
+- ACTION: Write in present tense. Describe natural progression. Use active motion verbs (pan, dolly, zoom, tilt) rather than vague words like "dynamic".
+- AVOID VIBES: Do NOT use buzzwords like "cinematic", "hyper-realistic", or "amazing". Ground everything in physical reality.
+- CAMERA STABILITY: Avoid "handheld chaotic". Prefer "subtle handheld" or "slow dolly".
 
 # Directive:
-- The "full_prompt" field in the JSON response MUST contain this entire long-form narrative (at least 150-200 words).
-- Focus on temporal consistency and physical realism.
-- Describe how the scene evolves over time.
+- The "full_prompt" field MUST contain this entire narrative.
+- Focus on temporal consistency.
 - Output MUST be in English.
 `;
 
@@ -496,6 +498,8 @@ The user wants a "Prompt Relay" output.
   162-240f The camera locks into...
 `;
       }
+    } else if (targetModel === 'veo') {
+      instruction = VEO_SPECIFIC_INSTRUCTION;
     } else {
       instruction = "Director's script focus.";
     }
@@ -596,6 +600,8 @@ export const refineEnhancedVideoPrompt = async (currentOutput: EnhancedVideoProm
       specificInstruction = SEEDANCE_SPECIFIC_INSTRUCTION;
     } else if (targetModel === 'ltx') {
       specificInstruction = LTX_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'veo') {
+      specificInstruction = VEO_SPECIFIC_INSTRUCTION;
     }
     const result = await ai.models.generateContent({
       model: FLASH_MODEL,
