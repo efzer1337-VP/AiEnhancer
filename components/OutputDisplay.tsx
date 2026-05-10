@@ -149,6 +149,14 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
               <Detail label="Camera" value={p.camera} />
               <Detail label="Materials" value={p.style_and_realism} />
           </CollapsibleSection>
+          {p.negative_prompt?.forbidden_content?.length > 0 && (
+            <CollapsibleSection title="Negative Constraints" defaultOpen={true}>
+              <div className="relative group">
+                <button onClick={() => handleCopy(p.negative_prompt.forbidden_content.join(', '), 'image-neg')} className="absolute top-0 right-0 p-1.5 bg-zinc-800 rounded opacity-0 group-hover:opacity-100 transition-all z-10"><ClipboardIcon className="w-3 h-3" /></button>
+                <p className="text-red-300/80 font-mono text-sm pr-8">{p.negative_prompt.forbidden_content.join(', ')}</p>
+              </div>
+            </CollapsibleSection>
+          )}
       </div>
     );
   };
@@ -238,7 +246,14 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                 <Detail label="Music" value={data.audio_direction.music_mood} />
               </div>
               <div>
-                <h4 className="text-[10px] text-slate-500 font-bold mb-2 uppercase">Negative Constraints</h4>
+                <h4 className="text-[10px] text-slate-500 font-bold mb-2 uppercase flex justify-between items-center">
+                    Negative Constraints
+                    {data.negative_constraints?.length > 0 && (
+                        <button onClick={() => handleCopy(data.negative_constraints.join(', '), 'video-neg')} className="p-1 bg-zinc-800 hover:bg-zinc-700 rounded transition-all text-slate-300">
+                            <ClipboardIcon className="w-2.5 h-2.5" />
+                        </button>
+                    )}
+                </h4>
                 <Detail label="Avoid" value={data.negative_constraints} />
               </div>
             </div>

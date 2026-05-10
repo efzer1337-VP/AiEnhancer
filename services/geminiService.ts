@@ -197,6 +197,22 @@ const FLUX_KLEIN_SPECIFIC_INSTRUCTION = `
 - For multi-reference editing, weave elements from all references into a single cohesive scene description.
 `;
 
+const EDIT_NANOBANANA_INSTRUCTION = `
+# Role: Nano Banana Image Editor
+# Specialized Structure for Nano Banana Editing:
+1. FOCUS ON PRESERVATION: Clearly state what must NOT change (e.g., "Keep the background exactly the same. Do not alter the subject's face.").
+2. INPAINTING LOGIC: Describe the area to be replaced precisely and seamlessly. Ensure new elements match the existing lighting and style of the original image.
+3. AVOID NEGATIVE CONSTRAINTS: Frame your edits positively. Instead of "remove the tree", write "replace the tree with clear blue sky".
+`;
+
+const EDIT_ZIMAGE_INSTRUCTION = `
+# Role: Z-Image Turbo Inpainting Expert
+# Specialized Structure for Z-Image Editing:
+1. EXPLICIT CONSTRAINTS: Since Z-Image has no negative prompt, all negative constraints MUST be explicitly stated as positive directions (e.g., "Ensure the background remains clean and unchanged").
+2. HIERARCHY OF EDITS: Detail the primary subject edit first, then the blending/lighting matching.
+3. HYPER-SPECIFICITY: Use technical terms for any added elements to perfectly match the original plate's resolution and grain.
+`;
+
 const IMAGE_PROMPT_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -538,6 +554,10 @@ export const generateEnhancedEditPrompt = async (prompt: string, imageBase64: st
     let specificInstruction = "";
     if (targetModel === 'flux_klein') {
       specificInstruction = FLUX_KLEIN_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'nanobanana') {
+      specificInstruction = EDIT_NANOBANANA_INSTRUCTION;
+    } else if (targetModel === 'z-image') {
+      specificInstruction = EDIT_ZIMAGE_INSTRUCTION;
     }
 
     parts.push({
@@ -622,6 +642,10 @@ export const refineEnhancedEditPrompt = async (currentOutput: EnhancedEditPrompt
     let specificInstruction = "";
     if (targetModel === 'flux_klein') {
       specificInstruction = FLUX_KLEIN_SPECIFIC_INSTRUCTION;
+    } else if (targetModel === 'nanobanana') {
+      specificInstruction = EDIT_NANOBANANA_INSTRUCTION;
+    } else if (targetModel === 'z-image') {
+      specificInstruction = EDIT_ZIMAGE_INSTRUCTION;
     }
     const result = await ai.models.generateContent({
       model: FLASH_MODEL,
@@ -641,7 +665,7 @@ export const superEnhanceVideoPrompt = async (currentOutput: EnhancedVideoPrompt
     const ai = getAIClient();
     const result = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: { parts: [{ text: `SUPER ENHANCE narrative depth: ${JSON.stringify(currentOutput)}. Return JSON. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
+      contents: { parts: [{ text: `SUPER ENHANCE INSTRUCTION: Critically analyze this video prompt's weaknesses. Then rewrite it to drastically maximize cinematic impact, lighting complexity, narrative depth, and realism. Target Model: ${targetModel}.\nCurrent Video Brief: ${JSON.stringify(currentOutput)}.\nReturn updated JSON. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
       config: {
         responseMimeType: "application/json",
         responseSchema: VIDEO_PROMPT_SCHEMA,
@@ -668,7 +692,7 @@ export const superEnhanceImagePrompt = async (currentOutput: EnhancedPrompt, tar
 
     const result = await ai.models.generateContent({
       model: FLASH_MODEL,
-      contents: { parts: [{ text: `${modelInstruction}\nSUPER ENHANCE technical fidelity: ${JSON.stringify(currentOutput)}. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
+      contents: { parts: [{ text: `${modelInstruction}\nSUPER ENHANCE INSTRUCTION: Critically analyze this image prompt's weaknesses. Then rewrite it to drastically maximize visual impact, lighting complexity, anatomical perfection, and realism. Target Model: ${targetModel}.\nCurrent Prompt: ${JSON.stringify(currentOutput)}.\nReturn updated JSON. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
       config: {
         responseMimeType: "application/json",
         responseSchema: IMAGE_PROMPT_SCHEMA,
