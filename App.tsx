@@ -567,6 +567,7 @@ const App: React.FC = () => {
                         <OutputDisplay 
                         output={currentOutput}
                         targetModel={currentTargetModel}
+                        mode={mode}
                         isLoading={isLoading}
                         isRefining={isRefining}
                         isSuperEnhancing={isSuperEnhancing}

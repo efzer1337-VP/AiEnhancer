@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode, ImageModel, VideoModel, EditModel } from '../types';
+import type { EnhancedPrompt, EnhancedVideoPrompt, EnhancedEditPrompt, ViewMode, ImageModel, VideoModel, EditModel, AppMode } from '../types';
 import { CodeIcon } from './icons/CodeIcon';
 import { SendIcon } from './icons/SendIcon';
 import { ClipboardIcon } from './icons/ClipboardIcon';
@@ -10,6 +10,7 @@ import { SparklesIcon } from './icons/SparklesIcon';
 interface OutputDisplayProps {
   output: EnhancedPrompt | EnhancedVideoPrompt | EnhancedEditPrompt | null;
   targetModel?: ImageModel | VideoModel | EditModel;
+  mode: AppMode;
   isLoading: boolean;
   isRefining: boolean;
   isSuperEnhancing: boolean;
@@ -102,7 +103,7 @@ const RefineInput: React.FC<{onRefine: (p: string) => void, isRefining: boolean}
 };
 
 export const OutputDisplay: React.FC<OutputDisplayProps> = ({
-  output, targetModel, isLoading, isRefining, isSuperEnhancing, error, viewMode, setViewMode, onRefine, onSuperEnhance,
+  output, targetModel, mode, isLoading, isRefining, isSuperEnhancing, error, viewMode, setViewMode, onRefine, onSuperEnhance,
 }) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   
@@ -218,7 +219,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
         </CollapsibleSection>
       )}
 
-      {targetModel !== 'ltx' && targetModel !== 'kling' && (
+      {true && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 bg-[#0B0D12] border-b border-white/10">
             <div className="p-4 border-r border-white/10 bg-indigo-500/5">
@@ -397,20 +398,45 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
           <div className="w-1.5 h-4 bg-gradient-to-b from-purple-400 via-pink-400 to-indigo-400 rounded-full" />
           <h2 className="text-[11px] font-semibold text-slate-300 uppercase tracking-widest">Output Terminal</h2>
         </div>
-        {output && !isLoading && (
-            <div className="flex items-center gap-2">
-              <div className="flex bg-white/[0.03] rounded-lg p-0.5 border border-white/8">
-                  <button onClick={() => setViewMode('text')} className={`px-3 py-1 rounded-md text-[10px] font-medium transition-all ${
-                    viewMode === 'text' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'
-                  }`}>Text</button>
-                  <button onClick={() => setViewMode('json')} className={`px-3 py-1 rounded-md text-[10px] font-medium transition-all ${
-                    viewMode === 'json' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'
-                  }`}>
-                    <span className="flex items-center gap-1"><CodeIcon className="w-3 h-3" />JSON</span>
-                  </button>
+        <div className="flex items-center gap-3">
+          {output && !isLoading && (mode === 'image' || mode === 'video') && (
+            <button
+              onClick={onSuperEnhance}
+              disabled={isSuperEnhancing}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                isSuperEnhancing 
+                ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' 
+                : 'bg-gradient-to-r from-purple-600/20 to-indigo-600/20 text-purple-300 border-purple-500/20 hover:border-purple-500/40 hover:from-purple-600/30 hover:to-indigo-600/30'
+              }`}
+            >
+              {isSuperEnhancing ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-purple-500/30 border-t-purple-400 rounded-full animate-spin" />
+                  Thinking...
+                </>
+              ) : (
+                <>
+                  <SparklesIcon className="w-3 h-3" />
+                  Super Enhance
+                </>
+              )}
+            </button>
+          )}
+          {output && !isLoading && (
+              <div className="flex items-center gap-2">
+                <div className="flex bg-white/[0.03] rounded-lg p-0.5 border border-white/8">
+                    <button onClick={() => setViewMode('text')} className={`px-3 py-1 rounded-md text-[10px] font-medium transition-all ${
+                      viewMode === 'text' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'
+                    }`}>Text</button>
+                    <button onClick={() => setViewMode('json')} className={`px-3 py-1 rounded-md text-[10px] font-medium transition-all ${
+                      viewMode === 'json' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'
+                    }`}>
+                      <span className="flex items-center gap-1"><CodeIcon className="w-3 h-3" />JSON</span>
+                    </button>
+                </div>
               </div>
-            </div>
-        )}
+          )}
+        </div>
       </div>
       <div className="flex-grow overflow-y-auto custom-scrollbar bg-[#080a10]">{renderContent()}</div>
     </div>
