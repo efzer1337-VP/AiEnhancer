@@ -104,6 +104,7 @@ export interface PromptObject {
 }
 
 export interface EnhancedPrompt {
+  full_prompt: string;
   prompt: PromptObject;
 }
 

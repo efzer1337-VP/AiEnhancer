@@ -65,6 +65,7 @@ const MASTER_ARCHITECTURE_INSTRUCTION = `
 Transform user concepts into professional-grade, technical blueprints for state-of-the-art AI generation models.
 
 # Core Directive:
+- FULL PROMPT GENERATION: You MUST construct a final, ready-to-use, cohesive prompt string in the "full_prompt" field of the schema. This field should contain a complete natural language prompt custom-tailored to the target model's style, incorporating environment, lighting, details, and parameters as specified below.
 - SUBJECT ARCHITECTURE: Describe physical attributes, materials, and anatomical precision (skeletal torque, micro-expressions).
 - OPTICAL PRECISION: Use technical photography and cinematography terminology (f-stop, focal length, lens coatings, sensor types like "Arri Alexa" or "Sony A7R V").
 - VOLUMETRIC LIGHTING: Specify light sources, Kelvin temperatures, bounce logic, and shadows (Rembrandt lighting, rim light, volumetric haze).
@@ -77,23 +78,31 @@ Transform user concepts into professional-grade, technical blueprints for state-
 const MIDJOURNEY_SPECIFIC_INSTRUCTION = `
 # Role: Midjourney V6.1 Master Prompt Engineer
 # Best Practices for Midjourney V6.1:
-- STYLE: Use natural language prose. Avoid "keyword soup".
-- PHOTOGRAPHY: Define the camera (e.g., "shot on 35mm film", "Kodak Portra 400"). Use "--style raw" for literalism.
-- PARAMETERS: Explicitly use parameters: "--v 6.1", "--ar [ratio]", "--stylize [250-750]", "--chaos [0-10]".
-- TEXT: Use "quotation marks" for specific text rendering.
+- STYLE: Use natural language prose in a single cohesive paragraph. Do not use keyword lists separated by commas.
+- PHOTOGRAPHY: Define the camera (e.g., "shot on 35mm film", "Kodak Portra 400"). 
+- TEXT: Use "quotation marks" for specific text rendering (e.g., "a sign saying 'HELLO'").
 - COMPOSITION: Use terms like "rule of thirds", "low-angle shot", "symmetrical composition".
-- AVOID: "Photorealistic", "4k", "hyper-detailed". Instead, describe the texture (e.g., "visible skin pores", "fine fabric weave").
+- AVOID: "Photorealistic", "4k", "hyper-detailed". Instead, describe textures (e.g., "visible skin pores", "fine fabric weave").
+- FULL_PROMPT DIRECTIVE:
+  - Write a cohesive, natural language prose prompt (40-70 words) representing the full scene.
+  - At the very end of the full_prompt string, append the required parameters separated by spaces.
+  - You MUST include: "--v 6.1"
+  - You MUST include: "--ar [aspect_ratio]" (use the ratio derived from the aspect_ratio_and_output object, e.g., "--ar 16:9" or "--ar 9:16", default to "--ar 16:9").
+  - You MUST include: "--stylize [value]" (choose a value between 50 and 750 based on the creative power: lower for literal realism, higher for creative styling).
+  - Include: "--style raw" if the desired style is photographic, candid, or realistic.
 `;
 
 const FLUX_SPECIFIC_INSTRUCTION = `
 # Role: FLUX.1 [pro] Prompt Architect
 # Best Practices for FLUX.1:
-- LANGUAGE: Conversational, descriptive, natural language. Treat it as a direct instruction to an artist.
-- CAMERA SPECS: Be hyper-specific about gear (e.g., "Shot on Hasselblad X2D, 80mm f/1.9 lens").
+- LANGUAGE: Conversational, highly descriptive, natural language. Treat it as a direct instruction to an artist. Write a single, flowing, cohesive paragraph. Do not use keyword soup.
+- CAMERA SPECS: Be hyper-specific about gear (e.g., "Shot on Hasselblad X2D, 80mm f/1.9 lens, f/2.8 aperture").
 - TEXT RENDERING: Flux is elite at text. Specify font styles and placement in quotes (e.g., "a neon sign saying 'CYBERPUNK' in a bold serif font").
-- HIERARCHY: Primary Subject -> Specific Action -> Detailed Environment -> Lighting Conditions -> Technical Aesthetics.
-- LENGTH: Aim for 40-70 words of dense, descriptive prose.
-- NEGATIVES: Do not use negative prompts. Describe the absence of things positively (e.g., "clean, empty street").
+- HIERARCHY: In the full_prompt, use the hierarchy: Primary Subject -> Specific Action -> Detailed Environment -> Lighting Conditions -> Technical Aesthetics.
+- NEGATIVES: Do not use negative prompts or parameters. Describe the absence of things positively (e.g., "clean, empty street").
+- FULL_PROMPT DIRECTIVE:
+  - Generate a single dense, descriptive, natural language paragraph of 45-80 words in the "full_prompt" field.
+  - Focus entirely on positive phrasing. Do not append any parameters (like --v or --ar) at the end.
 `;
 
 const NANOBANANA_SPECIFIC_INSTRUCTION = `
@@ -103,16 +112,19 @@ const NANOBANANA_SPECIFIC_INSTRUCTION = `
 - LIGHTING: Use "neon glows", "cinematic volumetric lighting", and "dramatic highlights".
 - COMPOSITION: Wide-angle or close-up macro shots work best.
 - TEXT: Enclose in double quotes. Specify the material (e.g., "glowing neon text").
-- PROMPT: Use descriptive, sensory-rich language. Focus on "feel" and "glow".
+- FULL_PROMPT DIRECTIVE:
+  - Generate a sensory-rich, highly aesthetic prose paragraph of 50-90 words in the "full_prompt" field. Focus on "feel", "glow", and vibrant artistic colors.
 `;
 
 const ZIMAGE_SPECIFIC_INSTRUCTION = `
 # Role: Z-Image [Turbo] Precision Engineer
 # Best Practices:
-- STRUCTURE: Strict hierarchy. Primary Subject -> Secondary Elements -> Background.
+- STRUCTURE: Strict hierarchy: Primary Subject -> Secondary Elements -> Background.
 - TECHNICAL: Use "Shot on 8k digital cinema camera", "anamorphic lens flare", "high dynamic range".
 - TEXTURES: Describe "tactile surfaces", "specular highlights", "micro-reflections".
-- POSITIVE ONLY: There is NO negative prompt. Describe the exclusion as a positive presence (e.g., "pristine white background" instead of "no clutter").
+- POSITIVE ONLY: Describe the exclusion as a positive presence (e.g., "pristine white background" instead of "no clutter").
+- FULL_PROMPT DIRECTIVE:
+  - Generate a mathematically clean, highly structured but fluent prose paragraph of 50-80 words in the "full_prompt" field.
 `;
 
 const GENERAL_IMAGE_INSTRUCTION = `
@@ -121,6 +133,8 @@ const GENERAL_IMAGE_INSTRUCTION = `
 - Detail every aspect of the scene: Subject, pose, environment, lighting, and camera angle.
 - Use strong, descriptive keywords and weight them if necessary.
 - Separate distinct concepts with commas.
+- FULL_PROMPT DIRECTIVE:
+  - Combine all scene aspects into a single descriptive prompt string in the "full_prompt" field.
 `;
 
 const VEO_SPECIFIC_INSTRUCTION = `
@@ -136,11 +150,13 @@ const VEO_SPECIFIC_INSTRUCTION = `
 const KLING_SPECIFIC_INSTRUCTION = `
 # Role: Kling 3.0 Cinematic Director
 # Best Practices for Kling 3.0:
-- MOTION PHYSICS: Describe the weight and gravity. Use verbs like "sprinting", "carefully grasping", "swaying rhythmically".
-- CAMERA LANGUAGE: Use "Dolly zoom", "Tracking shot", "Handheld shake", "Rack focus from foreground to background".
-- VISUAL FIDELITY: Specify "sub-surface scattering for skin", "ray-traced reflections", "volumetric dust motes".
-- SEQUENCE: Describe the shot as a progression: "The subject starts by... then moves toward... finally looking into the lens."
-- OUTPUT: The "full_prompt" must be a single, massive, hyper-detailed paragraph (150-300 words).
+- DIRECTOR HIERARCHY: Structure the prompt using the sequence: Camera Movement -> Subject -> Action -> Environment & Physics -> Style/Textures.
+- MOTION PHYSICS: Describe weight, gravity, and speed. Use specific movement verbs (e.g., "sprinting", "carefully grasping", "swaying rhythmically").
+- CAMERA LANGUAGE: Use precise camera moves: "Dolly zoom", "Tracking shot", "Handheld shake", "Rack focus from foreground to background".
+- VISUAL FIDELITY: Specify details like "sub-surface scattering for skin", "ray-traced reflections", "volumetric dust motes".
+- MICRO-MOTIONS: Add realistic tiny motions (blinking, breathing, wind blowing fabric, rain splashing).
+- INTERACTION: Describe how the subject physically touches the environment to ground the physics.
+- OUTPUT: The "full_prompt" must be a single, massive, cohesive, hyper-detailed director-style paragraph of 150-300 words.
 `;
 
 const SEEDANCE_SPECIFIC_INSTRUCTION = `
@@ -155,11 +171,12 @@ const SEEDANCE_SPECIFIC_INSTRUCTION = `
 const LTX_SPECIFIC_INSTRUCTION = `
 # Role: LTX-Video [Ultra] Director
 # Best Practices for LTX-Video:
-- TEMPORAL CONTINUITY: Focus on the transition of motion. Describe the "start-state" and "end-state".
-- CAMERA: Use "Shot on 35mm anamorphic lenses". Specify "slow tracking pan" or "subtle handheld breathing".
-- ENVIRONMENT: Describe physical interactions (e.g., "feet crunching on dry leaves", "wind whipping through hair").
-- NARRATIVE: Write in a single, flowing, professional paragraph.
-- RELAY MODE: If active, ensure precise frame-accurate shot transitions (e.g., "0-120f", "121-240f").
+- SHOT LIST HIERARCHY: Structure the prompt using: Scene Anchor & Lighting -> Subject & Action -> Camera Movement & Lens -> Style & Mood.
+- TEMPORAL CONTINUITY: Detail how motion transitions from start-state to end-state.
+- CAMERA: Use "Shot on 35mm anamorphic lenses". Specify "slow tracking pan", "subtle handheld breathing", or "dolly shot".
+- IMAGE-TO-VIDEO OPTIMIZATION: If first/last frames are provided, do NOT re-describe static content. Instead, focus 100% on motion, action, camera shifts, and temporal changes (e.g., "Subject's eyes blink, head turns slightly, hair flutters in the wind").
+- NARRATIVE: Write in a single, flowing, cohesive cinematic paragraph.
+- RELAY MODE: If active, ensure precise frame-accurate shot transitions (e.g., "0-90f [shot 1 prompt]", "91-180f [shot 2 prompt]"). Make sure the intervals sum up to the specified frame count.
 `;
 
 const FLUX_KLEIN_SPECIFIC_INSTRUCTION = `
@@ -201,6 +218,7 @@ const EDIT_ZIMAGE_INSTRUCTION = `
 const IMAGE_PROMPT_SCHEMA = {
   type: Type.OBJECT,
   properties: {
+    full_prompt: { type: Type.STRING },
     prompt: {
       type: Type.OBJECT,
       properties: {
@@ -270,7 +288,8 @@ const IMAGE_PROMPT_SCHEMA = {
       },
       required: ["subject", "pose", "environment", "camera", "lighting", "mood_and_expression", "style_and_realism", "colors_and_tone", "quality_and_technical_details", "aspect_ratio_and_output", "controlnet", "negative_prompt"]
     }
-  }
+  },
+  required: ["full_prompt", "prompt"]
 };
 
 const VIDEO_PROMPT_SCHEMA = {

@@ -127,7 +127,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
 
   const renderImageView = (data: EnhancedPrompt) => {
     const p = data.prompt;
-    const fullPrompt = [
+    const fullPrompt = data.full_prompt || [
         cleanPrefix(p.subject.description), p.pose.description, p.environment.setting, 
         p.environment.elements.join(", "), p.camera.shot_type, p.lighting.type, 
         p.style_and_realism.style, p.quality_and_technical_details.resolution
