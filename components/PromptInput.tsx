@@ -3,6 +3,7 @@ import React, { useRef, useState } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ImageIcon } from './icons/ImageIcon';
 import { resizeImage } from '../src/utils/imageUtils';
+import { Globe, Brain } from 'lucide-react';
 import type { ImageModel, CategorizedReferences } from '../types';
 
 interface PromptInputProps {
@@ -18,6 +19,10 @@ interface PromptInputProps {
   setImageModel: (model: ImageModel) => void;
   enhancementPower: number;
   setEnhancementPower: (power: number) => void;
+  webSearch: boolean;
+  setWebSearch: (enabled: boolean) => void;
+  thinkingMode: 'off' | 'low' | 'medium' | 'high';
+  setThinkingMode: (mode: 'off' | 'low' | 'medium' | 'high') => void;
   onGenerate: () => void;
   isLoading: boolean;
   onReversePromptOpen: () => void;
@@ -177,6 +182,10 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   setImageModel,
   enhancementPower,
   setEnhancementPower,
+  webSearch,
+  setWebSearch,
+  thinkingMode,
+  setThinkingMode,
   onGenerate,
   isLoading,
   onReversePromptOpen,
@@ -309,6 +318,80 @@ export const PromptInput: React.FC<PromptInputProps> = ({
                     </button>
                 ))}
             </div>
+        </div>
+
+        {/* Search & Reasoning Panel */}
+        <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-indigo-400" />
+              <span className="text-xs font-semibold text-slate-300 uppercase tracking-widest">
+                {language === 'en' ? 'Web Grounding' : 'Веб-поиск'}
+              </span>
+            </div>
+            <button
+              onClick={() => setWebSearch(!webSearch)}
+              className={`relative inline-flex h-5.5 w-10.5 items-center rounded-full transition-all duration-300 focus:outline-none cursor-pointer ${
+                webSearch ? 'bg-indigo-600 shadow-[0_0_12px_rgba(99,102,241,0.4)]' : 'bg-white/10 hover:bg-white/15'
+              }`}
+              disabled={isLoading}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-300 ${
+                  webSearch ? 'translate-x-5.5' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-500 leading-normal">
+            {language === 'en'
+              ? 'Enables real-time search for looking up facts, details, and current events directly during prompt generation.'
+              : 'Включает поиск в реальном времени для уточнения фактов, деталей и последних событий непосредственно при генерации.'}
+          </p>
+
+          <div className="h-px bg-white/5" />
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 mb-1">
+              <Brain className="w-4 h-4 text-purple-400" />
+              <label className="text-xs font-medium text-slate-400">
+                {language === 'en' ? 'Thinking Level' : 'Уровень мышления'}
+              </label>
+            </div>
+            <div className="grid grid-cols-4 gap-1">
+              {(['off', 'low', 'medium', 'high'] as const).map((lvl) => {
+                const labelsEn = { off: 'Off', low: 'Low', medium: 'Mid', high: 'Max' };
+                const labelsRu = { off: 'Выкл', low: 'Низкий', medium: 'Ср', high: 'Макс' };
+                const activeStyles = {
+                  off: 'bg-slate-500/10 border-slate-500/40 text-slate-300',
+                  low: 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300',
+                  medium: 'bg-purple-500/15 border-purple-500/40 text-purple-300',
+                  high: 'bg-pink-500/15 border-pink-500/40 text-pink-300',
+                };
+                const isSelected = thinkingMode === lvl;
+                return (
+                  <button
+                    key={lvl}
+                    onClick={() => setThinkingMode(lvl)}
+                    disabled={isLoading}
+                    className={`py-1.5 text-[9px] font-semibold uppercase tracking-wider rounded-lg border transition-all duration-200 cursor-pointer active:scale-95 ${
+                      isSelected
+                        ? `${activeStyles[lvl]} shadow-lg`
+                        : 'bg-white/[0.02] border-white/5 text-slate-600 hover:bg-white/[0.04] hover:text-slate-400'
+                    }`}
+                  >
+                    {language === 'en' ? labelsEn[lvl] : labelsRu[lvl]}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[9px] text-slate-600 leading-normal font-mono mt-1">
+              {thinkingMode === 'off' && (language === 'en' ? '⚡ Instant generation, no reasoning.' : '⚡ Мгновенная генерация без размышлений.')}
+              {thinkingMode === 'low' && (language === 'en' ? '💡 Light reasoning logic.' : '💡 Легкая логика рассуждений.')}
+              {thinkingMode === 'medium' && (language === 'en' ? '🧠 Medium reasoning (2048 token budget).' : '🧠 Среднее мышление (лимит 2048 токенов).')}
+              {thinkingMode === 'high' && (language === 'en' ? '🔮 Deep creative thinking (4096 token budget).' : '🔮 Глубокое мышление (лимит 4096 токенов).')}
+            </p>
+          </div>
         </div>
       </div>
 

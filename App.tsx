@@ -21,6 +21,8 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('text');
   const [language, setLanguage] = useState<'en' | 'ru'>('en');
   const [enhancementPower, setEnhancementPower] = useState<number>(3);
+  const [webSearch, setWebSearch] = useState<boolean>(false);
+  const [thinkingMode, setThinkingMode] = useState<'off' | 'low' | 'medium' | 'high'>('low');
 
   // Image-specific state
   const [imagePrompt, setImagePrompt] = useState<string>('');
@@ -160,7 +162,9 @@ const App: React.FC = () => {
         imageModel, 
         imageReferences, 
         enhancementPower,
-        categorizedReferences
+        categorizedReferences,
+        webSearch,
+        thinkingMode
       );
       setImageOutput(result);
       const newHistoryItem: HistoryItem = {
@@ -172,7 +176,9 @@ const App: React.FC = () => {
         output: result,
         references: imageReferences,
         categorizedReferences,
-        enhancementPower
+        enhancementPower,
+        webSearch,
+        thinkingMode
       };
       setHistory(prev => [newHistoryItem, ...prev]);
       setActiveHistoryId(newHistoryItem.id);
@@ -182,7 +188,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [imagePrompt, language, imageModel, imageReferences, categorizedReferences, enhancementPower]);
+  }, [imagePrompt, language, imageModel, imageReferences, categorizedReferences, enhancementPower, webSearch, thinkingMode]);
 
   const handleReversePrompt = async (imageBase64: string, context: string) => {
     setIsLoading(true);
@@ -190,7 +196,7 @@ const App: React.FC = () => {
     setIsReversePromptOpen(false);
     resetAllOutputs();
     try {
-      const result = await reversePromptImage(imageBase64, context, imageModel);
+      const result = await reversePromptImage(imageBase64, context, imageModel, webSearch, thinkingMode);
       setImageOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -199,7 +205,9 @@ const App: React.FC = () => {
         language,
         model: imageModel,
         output: result,
-        enhancementPower: 3
+        enhancementPower: 3,
+        webSearch,
+        thinkingMode
       };
       setHistory(prev => [newHistoryItem, ...prev]);
       setActiveHistoryId(newHistoryItem.id);
@@ -229,7 +237,9 @@ const App: React.FC = () => {
         videoModel, 
         enhancementPower,
         isVideoRelay,
-        videoRelayFrames
+        videoRelayFrames,
+        webSearch,
+        thinkingMode
       );
       setVideoOutput(result);
       const newHistoryItem: HistoryItem = {
@@ -244,7 +254,9 @@ const App: React.FC = () => {
         characterReferences: videoCharacterReferences,
         enhancementPower,
         isRelayMode: isVideoRelay,
-        relayFrames: videoRelayFrames
+        relayFrames: videoRelayFrames,
+        webSearch,
+        thinkingMode
       };
       setHistory(prev => [newHistoryItem, ...prev]);
       setActiveHistoryId(newHistoryItem.id);
@@ -254,7 +266,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [videoPrompt, firstFrame, lastFrame, videoCharacterReferences, language, videoModel, enhancementPower]);
+  }, [videoPrompt, firstFrame, lastFrame, videoCharacterReferences, language, videoModel, enhancementPower, isVideoRelay, videoRelayFrames, webSearch, thinkingMode]);
   
   const handleEditGenerate = useCallback(async () => {
     if (!editPrompt.trim()) {
@@ -269,7 +281,16 @@ const App: React.FC = () => {
     setError(null);
     resetAllOutputs();
     try {
-      const result = await generateEnhancedEditPrompt(editPrompt, editImage, editReferences, language, editModel, enhancementPower);
+      const result = await generateEnhancedEditPrompt(
+        editPrompt, 
+        editImage, 
+        editReferences, 
+        language, 
+        editModel, 
+        enhancementPower,
+        webSearch,
+        thinkingMode
+      );
       setEditOutput(result);
       const newHistoryItem: HistoryItem = {
         id: Date.now().toString(),
@@ -280,7 +301,9 @@ const App: React.FC = () => {
         output: result,
         sourceImage: editImage,
         references: editReferences,
-        enhancementPower
+        enhancementPower,
+        webSearch,
+        thinkingMode
       };
       setHistory(prev => [newHistoryItem, ...prev]);
       setActiveHistoryId(newHistoryItem.id);
@@ -290,7 +313,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [editPrompt, editImage, editReferences, language, editModel, enhancementPower]);
+  }, [editPrompt, editImage, editReferences, language, editModel, enhancementPower, webSearch, thinkingMode]);
 
   const handleRefine = useCallback(async (refinementPrompt: string) => {
     if (!refinementPrompt.trim()) return;
@@ -300,13 +323,13 @@ const App: React.FC = () => {
     try {
       let newOutput;
       if (mode === 'image' && imageOutput) {
-        newOutput = await refineEnhancedPrompt(imageOutput, refinementPrompt, imageModel);
+        newOutput = await refineEnhancedPrompt(imageOutput, refinementPrompt, imageModel, webSearch, thinkingMode);
         setImageOutput(newOutput);
       } else if (mode === 'video' && videoOutput) {
-        newOutput = await refineEnhancedVideoPrompt(videoOutput, refinementPrompt, videoModel);
+        newOutput = await refineEnhancedVideoPrompt(videoOutput, refinementPrompt, videoModel, webSearch, thinkingMode);
         setVideoOutput(newOutput);
       } else if (mode === 'edit' && editOutput) {
-        newOutput = await refineEnhancedEditPrompt(editOutput, refinementPrompt, editModel);
+        newOutput = await refineEnhancedEditPrompt(editOutput, refinementPrompt, editModel, webSearch, thinkingMode);
         setEditOutput(newOutput);
       }
       
@@ -326,7 +349,7 @@ const App: React.FC = () => {
       setIsRefining(false);
     }
 
-  }, [mode, imageOutput, videoOutput, editOutput, imageModel, videoModel, editModel, activeHistoryId]);
+  }, [mode, imageOutput, videoOutput, editOutput, imageModel, videoModel, editModel, activeHistoryId, webSearch, thinkingMode]);
 
   const handleSuperEnhance = useCallback(async () => {
     if ((mode !== 'video' || !videoOutput) && (mode !== 'image' || !imageOutput)) return;
@@ -379,6 +402,8 @@ const App: React.FC = () => {
     // Restore state from history
     setLanguage(item.language);
     if (item.enhancementPower) setEnhancementPower(item.enhancementPower);
+    setWebSearch(item.webSearch || false);
+    setThinkingMode(item.thinkingMode || 'low');
 
     if (item.type === 'image') {
         setImagePrompt(item.simplePrompt);
@@ -514,6 +539,10 @@ const App: React.FC = () => {
                             setImageModel={setImageModel}
                             enhancementPower={enhancementPower}
                             setEnhancementPower={setEnhancementPower}
+                            webSearch={webSearch}
+                            setWebSearch={setWebSearch}
+                            thinkingMode={thinkingMode}
+                            setThinkingMode={setThinkingMode}
                             onGenerate={onGenerate}
                             isLoading={isLoading}
                             onReversePromptOpen={() => setIsReversePromptOpen(true)}
@@ -539,6 +568,10 @@ const App: React.FC = () => {
                             setIsRelayMode={setIsVideoRelay}
                             relayFrames={videoRelayFrames}
                             setRelayFrames={setVideoRelayFrames}
+                            webSearch={webSearch}
+                            setWebSearch={setWebSearch}
+                            thinkingMode={thinkingMode}
+                            setThinkingMode={setThinkingMode}
                             onGenerate={onGenerate}
                             isLoading={isLoading}
                        />
@@ -557,6 +590,10 @@ const App: React.FC = () => {
                             setEditModel={setEditModel}
                             enhancementPower={enhancementPower}
                             setEnhancementPower={setEnhancementPower}
+                            webSearch={webSearch}
+                            setWebSearch={setWebSearch}
+                            thinkingMode={thinkingMode}
+                            setThinkingMode={setThinkingMode}
                             onGenerate={onGenerate}
                             isLoading={isLoading}
                         />

@@ -6,6 +6,7 @@ import { SendIcon } from './icons/SendIcon';
 import { ClipboardIcon } from './icons/ClipboardIcon';
 import { CheckIcon } from './icons/CheckIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
+import { Globe, Brain } from 'lucide-react';
 
 interface OutputDisplayProps {
   output: EnhancedPrompt | EnhancedVideoPrompt | EnhancedEditPrompt | null;
@@ -114,6 +115,130 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
     });
   };
 
+  const renderSearchAndReasoning = (data: any) => {
+    const hasSearch = (data.searchQueries && data.searchQueries.length > 0) || (data.searchSources && data.searchSources.length > 0);
+    const hasThoughts = !!data.thoughts;
+    
+    if (!hasSearch && !hasThoughts) return null;
+
+    // Theme color based on mode
+    const colors: Record<AppMode, { border: string; bg: string; text: string; tagBg: string; tagText: string; accent: string }> = {
+      image: {
+        border: 'border-indigo-500/20',
+        bg: 'bg-indigo-500/[0.02]',
+        text: 'text-indigo-400',
+        tagBg: 'bg-indigo-500/10',
+        tagText: 'text-indigo-300',
+        accent: 'indigo'
+      },
+      video: {
+        border: 'border-purple-500/20',
+        bg: 'bg-purple-500/[0.02]',
+        text: 'text-purple-400',
+        tagBg: 'bg-purple-500/10',
+        tagText: 'text-purple-300',
+        accent: 'purple'
+      },
+      edit: {
+        border: 'border-pink-500/20',
+        bg: 'bg-pink-500/[0.02]',
+        text: 'text-pink-400',
+        tagBg: 'bg-pink-500/10',
+        tagText: 'text-pink-300',
+        accent: 'pink'
+      }
+    };
+
+    const currentTheme = colors[mode] || colors.image;
+
+    return (
+      <div className="flex flex-col gap-4 p-4 border-b border-white/5 bg-zinc-950/20">
+        {/* Web Grounding Results */}
+        {hasSearch && (
+          <div className={`p-4 rounded-xl border ${currentTheme.border} ${currentTheme.bg} backdrop-blur-md relative overflow-hidden group/search`}>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.01] to-transparent -translate-x-full group-hover/search:animate-shimmer pointer-events-none" />
+            <div className="flex items-center gap-2 mb-3">
+              <div className={`w-2 h-2 rounded-full ${mode === 'image' ? 'bg-indigo-500 animate-pulse' : mode === 'video' ? 'bg-purple-500 animate-pulse' : 'bg-pink-500 animate-pulse'}`} />
+              <Globe className={`w-4 h-4 ${currentTheme.text}`} />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Web Grounding Sources</span>
+            </div>
+            
+            {/* Search Queries */}
+            {data.searchQueries && data.searchQueries.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {data.searchQueries.map((query: string, idx: number) => (
+                  <span key={idx} className={`px-2 py-0.5 rounded text-[10px] font-mono font-medium ${currentTheme.tagBg} ${currentTheme.tagText}`}>
+                    Query: "{query}"
+                  </span>
+                ))}
+              </div>
+            )}
+            
+            {/* Search Sources */}
+            {data.searchSources && data.searchSources.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                {data.searchSources.map((source: { title: string; uri: string }, idx: number) => {
+                  let domain = "";
+                  try {
+                    domain = new URL(source.uri).hostname.replace('www.', '');
+                  } catch (e) {
+                    domain = "web";
+                  }
+                  return (
+                    <a
+                      key={idx}
+                      href={source.uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col p-2.5 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/15 hover:bg-white/[0.04] transition-all duration-300 hover:-translate-y-0.5 group/source shadow-sm hover:shadow-md"
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className={`text-[8px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-white/5 text-slate-400 group-hover/source:text-white transition-colors`}>
+                          {domain}
+                        </span>
+                        <svg className="w-2.5 h-2.5 text-slate-600 group-hover/source:text-slate-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </div>
+                      <span className="text-[11px] font-medium text-slate-300 group-hover/source:text-white transition-colors line-clamp-1">
+                        {source.title || "Untitled Web Source"}
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-[10px] text-slate-500 italic">Fact verified using web data, no specific links returned.</p>
+            )}
+          </div>
+        )}
+
+        {/* Collapsible Model Thoughts */}
+        {hasThoughts && (
+          <CollapsibleSection title="Model Reasoning Process" defaultOpen={false} accentColor={currentTheme.accent}>
+            <div className="mt-2 p-4 rounded-xl bg-black/60 border border-white/5 relative group/thoughts font-mono text-[11px] leading-relaxed max-h-[300px] overflow-y-auto custom-scrollbar">
+              <div className="absolute top-2 right-2 flex gap-2">
+                <button
+                  onClick={() => handleCopy(data.thoughts, 'thoughts')}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider transition-all ${
+                    copiedKey === 'thoughts'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-white/5 text-slate-500 border border-white/10 opacity-0 group-hover/thoughts:opacity-100 hover:text-slate-200'
+                  }`}
+                >
+                  {copiedKey === 'thoughts' ? <CheckIcon className="w-2 h-2" /> : <ClipboardIcon className="w-2 h-2" />}
+                  {copiedKey === 'thoughts' ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+              <span className="text-slate-500 select-none mr-2">$ cat reasoning_process.log</span>
+              <p className="text-slate-400 whitespace-pre-wrap mt-2 pr-12 font-mono leading-relaxed">{data.thoughts}</p>
+            </div>
+          </CollapsibleSection>
+        )}
+      </div>
+    );
+  };
+
   const cleanPrefix = (text: string) => {
       if (!text) return "";
       const prefixes = ["nanobanana", "midjourney", "flux", "z-image", "prompt for", "a prompt"];
@@ -136,6 +261,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
     return (
       <div className="flex flex-col">
           <RefineInput onRefine={onRefine} isRefining={isRefining} />
+          {renderSearchAndReasoning(data)}
           <CollapsibleSection title="Master Execution Prompt" defaultOpen={true} accentColor="indigo">
             <div className="relative group">
               <button
@@ -193,6 +319,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
   const renderVideoView = (data: EnhancedVideoPrompt) => (
     <div className="flex flex-col h-full">
       <RefineInput onRefine={onRefine} isRefining={isRefining} />
+      {renderSearchAndReasoning(data)}
       <CollapsibleSection title={targetModel === 'ltx' ? "Final LTX Prompt" : targetModel === 'kling' ? "Final Kling Prompt" : "Master Cinematic Prompt"} defaultOpen={true}>
         <div className="relative group">
           <button 
@@ -301,6 +428,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
   const renderEditView = (data: EnhancedEditPrompt) => (
     <div className="flex flex-col">
        <RefineInput onRefine={onRefine} isRefining={isRefining} />
+       {renderSearchAndReasoning(data)}
        {/* Task Summary Banner */}
        <div className="px-4 py-4 bg-gradient-to-r from-pink-500/8 via-rose-500/5 to-transparent border-b border-white/5">
             <div className="flex items-start gap-3">

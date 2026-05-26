@@ -28,6 +28,76 @@ const parseJSONOutput = (text: string) => {
   }
 };
 
+const buildGenerationConfig = (
+  schema: any,
+  webSearch?: boolean,
+  thinkingMode?: 'off' | 'low' | 'medium' | 'high'
+) => {
+  const config: any = {
+    responseMimeType: "application/json",
+    responseSchema: schema,
+  };
+
+  if (webSearch) {
+    config.tools = [{ googleSearch: {} }];
+  }
+
+  if (thinkingMode && thinkingMode !== 'off') {
+    config.thinkingConfig = {
+      includeThoughts: true,
+    };
+    if (thinkingMode === 'low') {
+      config.thinkingConfig.thinkingLevel = ThinkingLevel.LOW;
+    } else if (thinkingMode === 'medium') {
+      config.thinkingConfig.thinkingBudget = 2048;
+    } else if (thinkingMode === 'high') {
+      config.thinkingConfig.thinkingBudget = 4096;
+    }
+  }
+
+  return config;
+};
+
+interface GenerationMetadata {
+  thoughts?: string;
+  searchQueries?: string[];
+  searchSources?: { title: string; uri: string }[];
+}
+
+const extractMetadata = (result: any): GenerationMetadata => {
+  const metadata: GenerationMetadata = {};
+
+  // 1. Extract thoughts
+  const parts = result.candidates?.[0]?.content?.parts;
+  if (Array.isArray(parts)) {
+    const thoughtParts = parts.filter((part: any) => part.thought === true);
+    if (thoughtParts.length > 0) {
+      metadata.thoughts = thoughtParts.map((part: any) => part.text).join('\n');
+    }
+  }
+
+  // 2. Extract web search metadata
+  const groundingMetadata = result.candidates?.[0]?.groundingMetadata;
+  if (groundingMetadata) {
+    if (Array.isArray(groundingMetadata.webSearchQueries)) {
+      metadata.searchQueries = groundingMetadata.webSearchQueries;
+    }
+    if (Array.isArray(groundingMetadata.groundingChunks)) {
+      metadata.searchSources = groundingMetadata.groundingChunks
+        .map((chunk: any) => {
+          if (chunk.web?.title && chunk.web?.uri) {
+            return { title: chunk.web.title, uri: chunk.web.uri };
+          }
+          return null;
+        })
+        .filter(Boolean) as { title: string; uri: string }[];
+    }
+  }
+
+  return metadata;
+};
+
+
 async function withRetry<T>(fn: () => Promise<T>, retries = 2, delay = 800): Promise<T> {
   try {
     return await fn();
@@ -391,7 +461,9 @@ export const generateEnhancedPrompt = async (
   targetModel: ImageModel,
   references: string[],
   power: number,
-  categorizedReferences?: CategorizedReferences
+  categorizedReferences?: CategorizedReferences,
+  webSearch?: boolean,
+  thinkingMode?: 'off' | 'low' | 'medium' | 'high'
 ): Promise<EnhancedPrompt> => {
   return withRetry(async () => {
     const ai = getAIClient();
@@ -439,17 +511,21 @@ export const generateEnhancedPrompt = async (
     const result = await ai.models.generateContent({
       model: FLASH_MODEL,
       contents: { parts },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: IMAGE_PROMPT_SCHEMA,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      }
+      config: buildGenerationConfig(IMAGE_PROMPT_SCHEMA, webSearch, thinkingMode)
     });
-    return parseJSONOutput(result.text || "");
+    const parsed = parseJSONOutput(result.text || "");
+    const meta = extractMetadata(result);
+    return { ...parsed, ...meta };
   });
 };
 
-export const reversePromptImage = async (imageBase64: string, context: string, targetModel: ImageModel): Promise<EnhancedPrompt> => {
+export const reversePromptImage = async (
+  imageBase64: string,
+  context: string,
+  targetModel: ImageModel,
+  webSearch?: boolean,
+  thinkingMode?: 'off' | 'low' | 'medium' | 'high'
+): Promise<EnhancedPrompt> => {
   return withRetry(async () => {
     const ai = getAIClient();
     let modelInstruction = GENERAL_IMAGE_INSTRUCTION;
@@ -467,13 +543,11 @@ export const reversePromptImage = async (imageBase64: string, context: string, t
     const result = await ai.models.generateContent({
       model: FLASH_MODEL,
       contents: { parts },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: IMAGE_PROMPT_SCHEMA,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      }
+      config: buildGenerationConfig(IMAGE_PROMPT_SCHEMA, webSearch, thinkingMode)
     });
-    return parseJSONOutput(result.text || "");
+    const parsed = parseJSONOutput(result.text || "");
+    const meta = extractMetadata(result);
+    return { ...parsed, ...meta };
   });
 };
 
@@ -486,7 +560,9 @@ export const generateEnhancedVideoPrompt = async (
   targetModel: VideoModel,
   power: number,
   isRelayMode: boolean = false,
-  relayFrames: number = 240
+  relayFrames: number = 240,
+  webSearch?: boolean,
+  thinkingMode?: 'off' | 'low' | 'medium' | 'high'
 ): Promise<EnhancedVideoPrompt> => {
   return withRetry(async () => {
     const ai = getAIClient();
@@ -539,17 +615,24 @@ The user wants a "Prompt Relay" output.
     const result = await ai.models.generateContent({
       model: FLASH_MODEL,
       contents: { parts },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: VIDEO_PROMPT_SCHEMA,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      }
+      config: buildGenerationConfig(VIDEO_PROMPT_SCHEMA, webSearch, thinkingMode)
     });
-    return parseJSONOutput(result.text || "");
+    const parsed = parseJSONOutput(result.text || "");
+    const meta = extractMetadata(result);
+    return { ...parsed, ...meta };
   });
 };
 
-export const generateEnhancedEditPrompt = async (prompt: string, imageBase64: string, references: string[], language: 'en' | 'ru', targetModel: EditModel, power: number): Promise<EnhancedEditPrompt> => {
+export const generateEnhancedEditPrompt = async (
+  prompt: string,
+  imageBase64: string,
+  references: string[],
+  language: 'en' | 'ru',
+  targetModel: EditModel,
+  power: number,
+  webSearch?: boolean,
+  thinkingMode?: 'off' | 'low' | 'medium' | 'high'
+): Promise<EnhancedEditPrompt> => {
   return withRetry(async () => {
     const ai = getAIClient();
     const parts: any[] = [fileToGenerativePart(imageBase64)];
@@ -577,17 +660,21 @@ export const generateEnhancedEditPrompt = async (prompt: string, imageBase64: st
     const result = await ai.models.generateContent({
       model: FLASH_MODEL,
       contents: { parts },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: EDIT_SCHEMA,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      }
+      config: buildGenerationConfig(EDIT_SCHEMA, webSearch, thinkingMode)
     });
-    return parseJSONOutput(result.text || "");
+    const parsed = parseJSONOutput(result.text || "");
+    const meta = extractMetadata(result);
+    return { ...parsed, ...meta };
   });
 };
 
-export const refineEnhancedPrompt = async (currentOutput: EnhancedPrompt, refinementInstruction: string, targetModel: ImageModel): Promise<EnhancedPrompt> => {
+export const refineEnhancedPrompt = async (
+  currentOutput: EnhancedPrompt,
+  refinementInstruction: string,
+  targetModel: ImageModel,
+  webSearch?: boolean,
+  thinkingMode?: 'off' | 'low' | 'medium' | 'high'
+): Promise<EnhancedPrompt> => {
   return withRetry(async () => {
     const ai = getAIClient();
     let modelInstruction = GENERAL_IMAGE_INSTRUCTION;
@@ -604,17 +691,21 @@ export const refineEnhancedPrompt = async (currentOutput: EnhancedPrompt, refine
     const result = await ai.models.generateContent({
       model: FLASH_MODEL,
       contents: { parts: [{ text: `${modelInstruction}\nCurrent Prompt JSON: ${JSON.stringify(currentOutput)}\nREFINE: "${refinementInstruction}" for ${targetModel}. Maintain schema. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: IMAGE_PROMPT_SCHEMA,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      }
+      config: buildGenerationConfig(IMAGE_PROMPT_SCHEMA, webSearch, thinkingMode)
     });
-    return parseJSONOutput(result.text || "");
+    const parsed = parseJSONOutput(result.text || "");
+    const meta = extractMetadata(result);
+    return { ...parsed, ...meta };
   });
 };
 
-export const refineEnhancedVideoPrompt = async (currentOutput: EnhancedVideoPrompt, refinementInstruction: string, targetModel: VideoModel): Promise<EnhancedVideoPrompt> => {
+export const refineEnhancedVideoPrompt = async (
+  currentOutput: EnhancedVideoPrompt,
+  refinementInstruction: string,
+  targetModel: VideoModel,
+  webSearch?: boolean,
+  thinkingMode?: 'off' | 'low' | 'medium' | 'high'
+): Promise<EnhancedVideoPrompt> => {
   return withRetry(async () => {
     const ai = getAIClient();
     let specificInstruction = "";
@@ -630,17 +721,21 @@ export const refineEnhancedVideoPrompt = async (currentOutput: EnhancedVideoProm
     const result = await ai.models.generateContent({
       model: FLASH_MODEL,
       contents: { parts: [{ text: `${specificInstruction}\nCurrent Video Brief: ${JSON.stringify(currentOutput)}\nREFINE: "${refinementInstruction}". Return updated JSON. IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: VIDEO_PROMPT_SCHEMA,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      }
+      config: buildGenerationConfig(VIDEO_PROMPT_SCHEMA, webSearch, thinkingMode)
     });
-    return parseJSONOutput(result.text || "");
+    const parsed = parseJSONOutput(result.text || "");
+    const meta = extractMetadata(result);
+    return { ...parsed, ...meta };
   });
 };
 
-export const refineEnhancedEditPrompt = async (currentOutput: EnhancedEditPrompt, refinementInstruction: string, targetModel: EditModel): Promise<EnhancedEditPrompt> => {
+export const refineEnhancedEditPrompt = async (
+  currentOutput: EnhancedEditPrompt,
+  refinementInstruction: string,
+  targetModel: EditModel,
+  webSearch?: boolean,
+  thinkingMode?: 'off' | 'low' | 'medium' | 'high'
+): Promise<EnhancedEditPrompt> => {
   return withRetry(async () => {
     const ai = getAIClient();
     let specificInstruction = "";
@@ -654,13 +749,11 @@ export const refineEnhancedEditPrompt = async (currentOutput: EnhancedEditPrompt
     const result = await ai.models.generateContent({
       model: FLASH_MODEL,
       contents: { parts: [{ text: `${specificInstruction}\nCurrent Edit Task: ${JSON.stringify(currentOutput)}\nREFINEMENT REQUEST: "${refinementInstruction}". IMPORTANT: ALL TEXT MUST REMAIN IN ENGLISH.` }] },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: EDIT_SCHEMA,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      }
+      config: buildGenerationConfig(EDIT_SCHEMA, webSearch, thinkingMode)
     });
-    return parseJSONOutput(result.text || "");
+    const parsed = parseJSONOutput(result.text || "");
+    const meta = extractMetadata(result);
+    return { ...parsed, ...meta };
   });
 };
 
@@ -676,7 +769,9 @@ export const superEnhanceVideoPrompt = async (currentOutput: EnhancedVideoPrompt
         thinkingConfig: { thinkingBudget: 1024 }
       }
     });
-    return parseJSONOutput(result.text || "");
+    const parsed = parseJSONOutput(result.text || "");
+    const meta = extractMetadata(result);
+    return { ...parsed, ...meta };
   });
 };
 
@@ -703,6 +798,8 @@ export const superEnhanceImagePrompt = async (currentOutput: EnhancedPrompt, tar
         thinkingConfig: { thinkingBudget: 1024 }
       }
     });
-    return parseJSONOutput(result.text || "");
+    const parsed = parseJSONOutput(result.text || "");
+    const meta = extractMetadata(result);
+    return { ...parsed, ...meta };
   });
 };

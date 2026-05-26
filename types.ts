@@ -106,7 +106,11 @@ export interface PromptObject {
 export interface EnhancedPrompt {
   full_prompt: string;
   prompt: PromptObject;
+  thoughts?: string;
+  searchQueries?: string[];
+  searchSources?: { title: string; uri: string }[];
 }
+
 
 // --- VIDEO PROMPT TYPES ---
 
@@ -159,6 +163,9 @@ export interface EnhancedVideoPrompt {
   audio_direction: VideoAudio;
   negative_constraints: string[];
   model_notes?: string;
+  thoughts?: string;
+  searchQueries?: string[];
+  searchSources?: { title: string; uri: string }[];
 }
 
 // --- EDIT PROMPT TYPES (Refocused on "Task/Assignment") ---
@@ -175,6 +182,9 @@ export interface EnhancedEditPrompt {
       denoising_target: string;
       consistency_weight: string;
   };
+  thoughts?: string;
+  searchQueries?: string[];
+  searchSources?: { title: string; uri: string }[];
 }
 
 export type ViewMode = 'text' | 'json';
@@ -185,6 +195,8 @@ export interface HistoryItemBase {
   simplePrompt: string;
   language: 'en' | 'ru';
   enhancementPower?: number;
+  webSearch?: boolean;
+  thinkingMode?: 'off' | 'low' | 'medium' | 'high';
 }
 
 export interface HistoryItemImage extends HistoryItemBase {
