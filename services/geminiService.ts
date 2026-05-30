@@ -148,38 +148,40 @@ Transform user concepts into professional-grade, technical blueprints for state-
 const MIDJOURNEY_SPECIFIC_INSTRUCTION = `
 # Role: Midjourney V6.1 Master Prompt Engineer
 # Best Practices for Midjourney V6.1:
-- STYLE: Use natural language prose in a single cohesive paragraph. Do not use keyword lists separated by commas.
-- PHOTOGRAPHY: Define the camera (e.g., "shot on 35mm film", "Kodak Portra 400"). 
-- TEXT: Use "quotation marks" for specific text rendering (e.g., "a sign saying 'HELLO'").
+- STYLE: Use natural language prose in a single cohesive paragraph. Avoid lists of keywords separated by commas or brackets. Describe the scene like a vivid story.
+- PHOTOGRAPHY: Define the camera (e.g., "shot on 35mm film", "Kodak Portra 400") to trigger realistic texture and noise.
+- TEXT: Use "double quotes" for specific text rendering (e.g., "a sign saying 'HELLO'").
 - COMPOSITION: Use terms like "rule of thirds", "low-angle shot", "symmetrical composition".
-- AVOID: "Photorealistic", "4k", "hyper-detailed". Instead, describe textures (e.g., "visible skin pores", "fine fabric weave").
+- AVOID: Vague terms like "photorealistic", "4k", "hyper-detailed". Instead, describe tangible textures (e.g., "visible skin pores", "fine fabric weave", "dust motes").
 - FULL_PROMPT DIRECTIVE:
   - Write a cohesive, natural language prose prompt (40-70 words) representing the full scene.
   - At the very end of the full_prompt string, append the required parameters separated by spaces.
   - You MUST include: "--v 6.1"
   - You MUST include: "--ar [aspect_ratio]" (use the ratio derived from the aspect_ratio_and_output object, e.g., "--ar 16:9" or "--ar 9:16", default to "--ar 16:9").
   - You MUST include: "--stylize [value]" (choose a value between 50 and 750 based on the creative power: lower for literal realism, higher for creative styling).
-  - Include: "--style raw" if the desired style is photographic, candid, or realistic.
+  - Include: "--style raw" at the end if the desired style is photographic, candid, or realistic.
+  - Parameters MUST be placed after the text, separated by spaces (e.g., "[Prompt text] --v 6.1 --ar 16:9 --stylize 150 --style raw").
 `;
 
 const FLUX_SPECIFIC_INSTRUCTION = `
-# Role: FLUX.1 [pro] Prompt Architect
-# Best Practices for FLUX.1:
-- LANGUAGE: Conversational, highly descriptive, natural language. Treat it as a direct instruction to an artist. Write a single, flowing, cohesive paragraph. Do not use keyword soup.
-- CAMERA SPECS: Be hyper-specific about gear (e.g., "Shot on Hasselblad X2D, 80mm f/1.9 lens, f/2.8 aperture").
-- TEXT RENDERING: Flux is elite at text. Specify font styles and placement in quotes (e.g., "a neon sign saying 'CYBERPUNK' in a bold serif font").
+# Role: FLUX.1 [pro] and FLUX 1.1 [pro] Prompt Architect
+# Best Practices for FLUX:
+- SUBJECT PRIORITIZATION: Place the most important subject and its key actions at the very beginning of the prompt. FLUX pays the most attention to the start of the prompt.
+- LANGUAGE: Conversational, highly descriptive, natural language. Treat it as a direct instruction to an artist. Write a single, flowing, cohesive paragraph. Do not use keyword soup or negative syntax.
+- PHOTOREALISM TRIGGERS: To achieve hyper-realism, specify files/gear (e.g., "Shot on Hasselblad X2D, 80mm f/1.9 lens, f/2.8 aperture, RAW photo" or "candid digital photo, IMG_1234.jpg style").
+- TEXT RENDERING: Specify font styles, colors, and placement in double quotes (e.g., "a glowing neon sign saying 'OPEN' in a bold sans-serif font").
 - HIERARCHY: In the full_prompt, use the hierarchy: Primary Subject -> Specific Action -> Detailed Environment -> Lighting Conditions -> Technical Aesthetics.
-- NEGATIVES: Do not use negative prompts or parameters. Describe the absence of things positively (e.g., "clean, empty street").
+- NEGATIVES: Do not use negative prompts or parameters (like --v, --ar, or --style). Describe the absence of things positively (e.g., "a clean, empty street").
 - FULL_PROMPT DIRECTIVE:
-  - Generate a single dense, descriptive, natural language paragraph of 45-80 words in the "full_prompt" field.
-  - Focus entirely on positive phrasing. Do not append any parameters (like --v or --ar) at the end.
+  - Generate a single dense, descriptive, natural language paragraph of 50-80 words in the "full_prompt" field.
+  - Focus entirely on positive phrasing. Do not append any parameters at the end.
 `;
 
 const NANOBANANA_SPECIFIC_INSTRUCTION = `
 # Role: Nano Banana [V3] Aesthetic Architect
 # Best Practices:
-- STYLE: Highly stylized, vibrant, and "hyper-real".
-- LIGHTING: Use "neon glows", "cinematic volumetric lighting", and "dramatic highlights".
+- STYLE: Highly stylized, vibrant, hyper-real, with maximum aesthetic grade.
+- LIGHTING: Use vibrant "neon glows", "cinematic volumetric lighting", "dramatic highlights", and "bioluminescent accents".
 - COMPOSITION: Wide-angle or close-up macro shots work best.
 - TEXT: Enclose in double quotes. Specify the material (e.g., "glowing neon text").
 - FULL_PROMPT DIRECTIVE:
@@ -210,43 +212,44 @@ const GENERAL_IMAGE_INSTRUCTION = `
 const VEO_SPECIFIC_INSTRUCTION = `
 # Role: Google Veo Film Director
 # Best Practices for Veo:
-- CINEMATOGRAPHY: Describe shots in a sequence. Use "Shot 1: [description]. Shot 2: [description]."
-- CAMERA: Explicitly state "Orbit shot", "Whip pan", "Slow dolly zoom (Vertigo effect)".
-- AUDIO SYNC: Describe the soundscape in the "audio_direction" field with temporal cues.
-- SPECIFICITY: Describe the physics of movement (e.g., "liquid splashing with high surface tension", "cloth fluttering in 15mph wind").
-- LENGTH: Veo likes density. Fill the schema with technical jargon.
+- CINEMATOGRAPHY: Describe camera movements in clear, separate sentences from subject actions to prevent the model from confusing them.
+- CAMERA: Explicitly state movements: "Slow tracking pan to the right", "Orbit shot", "Whip pan", "Slow dolly zoom (Vertigo effect)".
+- VISUAL HIERARCHY: Specify subject details first, then setting details, then lighting and camera.
+- AUDIO DIRECTION: In the "audio_direction" field, describe a layered soundscape (ambient sound, sound effects, music mood) with chronological cues (e.g., "0s-4s: birds chirping, 4s-10s: sudden thunderclap"). Use quotation marks for speech/dialogue if any.
+- SPECIFICITY: Detail physics of movement (e.g., "liquid splashing with high surface tension", "cloth fluttering in 15mph wind").
+- LENGTH: Keep it focused. The prompt should be between 75 and 150 words for optimal attention.
 `;
 
 const KLING_SPECIFIC_INSTRUCTION = `
 # Role: Kling 3.0 Cinematic Director
 # Best Practices for Kling 3.0:
 - DIRECTOR HIERARCHY: Structure the prompt using the sequence: Camera Movement -> Subject -> Action -> Environment & Physics -> Style/Textures.
-- MOTION PHYSICS: Describe weight, gravity, and speed. Use specific movement verbs (e.g., "sprinting", "carefully grasping", "swaying rhythmically").
-- CAMERA LANGUAGE: Use precise camera moves: "Dolly zoom", "Tracking shot", "Handheld shake", "Rack focus from foreground to background".
-- VISUAL FIDELITY: Specify details like "sub-surface scattering for skin", "ray-traced reflections", "volumetric dust motes".
-- MICRO-MOTIONS: Add realistic tiny motions (blinking, breathing, wind blowing fabric, rain splashing).
-- INTERACTION: Describe how the subject physically touches the environment to ground the physics.
+- CAMERA LANGUAGE: Start the description with precise camera instructions (e.g., "A slow tracking shot from left to right", "Dolly zoom", "Handheld shake", "Rack focus"). Limit to one primary camera movement per clip to ensure stability.
+- MOTION PHYSICS & INTERACTIONS: Describe the physical weight, gravity, and interaction with the environment (e.g., "heavy boots pressing down into wet, sinking mud", "water dripping down the forehead"). Use active movement verbs.
+- MICRO-MOTIONS: Add realistic secondary motions (blinking, breathing, wind blowing fabric, rain splashing, leaves rustling).
+- VISUAL FIDELITY: Specify details like "sub-surface scattering for skin", "ray-traced reflections", "volumetric dust motes", and "focal depth".
 - OUTPUT: The "full_prompt" must be a single, massive, cohesive, hyper-detailed director-style paragraph of 150-300 words.
 `;
 
 const SEEDANCE_SPECIFIC_INSTRUCTION = `
 # Role: Seedance 2.0 (Dreamina) Multimodal Expert
-# Best Practices:
-- MULTIMODAL: If references are provided, mention them using "@Image", "@Video", or "@Audio" logic in the description.
-- MOTION: Describe the kinetic energy. Use "explosive movement", "slow-motion grace", "fluid transitions".
-- LIGHTING: Use "Kelvin temperature (3200K vs 5600K)", "God rays", "cyberpunk neon bounce".
-- NARRATIVE: The "full_prompt" must be a massive, cohesive cinematic script paragraph.
+# Best Practices for Seedance:
+- STRUCTURE: Follow the sequence: Subject -> Action -> Setting/Environment -> Camera/Cinematography -> Lighting & Style.
+- MOTION DYNAMICS: Direct the motion using descriptive phrases representing kinetic energy (e.g., "explosive movement", "slow-motion grace", "fluid transitions").
+- VISUAL REFERENCES: If references are provided, mention them using "@Image", "@Video", or "@Audio" logic in the description.
+- LIGHTING: Describe Kelvin temperatures (e.g., "warm golden hour light at 3200K", "cool daylight at 5600K"), volumetric rays, and glowing neon reflections.
+- NARRATIVE: The "full_prompt" must be a dense, highly visual cinematic paragraph of 30-100 words.
 `;
 
 const LTX_SPECIFIC_INSTRUCTION = `
 # Role: LTX-Video [Ultra] Director
 # Best Practices for LTX-Video:
 - SHOT LIST HIERARCHY: Structure the prompt using: Scene Anchor & Lighting -> Subject & Action -> Camera Movement & Lens -> Style & Mood.
-- TEMPORAL CONTINUITY: Detail how motion transitions from start-state to end-state.
-- CAMERA: Use "Shot on 35mm anamorphic lenses". Specify "slow tracking pan", "subtle handheld breathing", or "dolly shot".
-- IMAGE-TO-VIDEO OPTIMIZATION: If first/last frames are provided, do NOT re-describe static content. Instead, focus 100% on motion, action, camera shifts, and temporal changes (e.g., "Subject's eyes blink, head turns slightly, hair flutters in the wind").
-- NARRATIVE: Write in a single, flowing, cohesive cinematic paragraph.
-- RELAY MODE: If active, ensure precise frame-accurate shot transitions (e.g., "0-90f [shot 1 prompt]", "91-180f [shot 2 prompt]"). Make sure the intervals sum up to the specified frame count.
+- SINGLE PARAGRAPH RULE: All description must form a single, continuous, flowing paragraph. Do not use line breaks or lists.
+- TEMPORAL CONTINUITY: Detail the transition from start-state to end-state using present tense active verbs (e.g., "turns", "reaches").
+- CAMERA: Describe shot types and lens attributes (e.g., "shot on 35mm anamorphic lenses", "slow tracking shot from behind").
+- IMAGE-TO-VIDEO OPTIMIZATION: If first/last frames are provided, do NOT re-describe static elements. Focus 100% on motion, action, camera shifts, and temporal changes.
+- RELAY MODE: If active, ensure precise frame-accurate shot transitions formatted exactly as: "[StartFrame]-[EndFrame]f [Shot prompt]". Ensure the frame intervals sum up to the specified frame count.
 `;
 
 const FLUX_KLEIN_SPECIFIC_INSTRUCTION = `
